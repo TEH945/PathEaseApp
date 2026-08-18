@@ -1,10 +1,13 @@
 package com.example.patheaseapp.ui.home
 
 import android.Manifest
+import android.app.Activity
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.speech.RecognizerIntent
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -20,13 +23,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import com.google.android.gms.maps.model.CameraPosition
+import com.google.android.gms.maps.model.LatLng
+import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.Marker
+import com.google.maps.android.compose.MarkerState
+import com.google.maps.android.compose.rememberCameraPositionState
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,59 +45,63 @@ fun HomeScreen(
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
 
+    // Default map position (Coordinates for center view)
+    val defaultLocation = LatLng(3.1390, 101.6869)
+    val cameraPositionState = rememberCameraPositionState {
+        position = CameraPosition.fromLatLngZoom(defaultLocation, 14f)
+    }
+
+    // Voice recognition launcher (System Intent approach)
+    val speechLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val spokenText = result.data
+                ?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
+                ?.firstOrNull()
+            spokenText?.let { text ->
+                viewModel.onSearchQueryChanged(text)
+                viewModel.startNavigationTo(text)
+            }
+        }
+    }
+
+    // Audio recording permission launcher
     val recordAudioPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         if (isGranted) {
-            viewModel.startVoiceInput()
+            try {
+                val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                    putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                    putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
+                    putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak your destination...")
+                }
+                speechLauncher.launch(intent)
+            } catch (e: Exception) {
+                Toast.makeText(
+                    context,
+                    "Voice input not supported on this device's system settings.",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
         }
-    }
-
-    LaunchedEffect(Unit) {
-        viewModel.initSpeechRecognizer(context)
     }
 
     Box(modifier = modifier.fillMaxSize()) {
-        // Map Area
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color(0xFFE8ECEF))
-                .semantics { contentDescription = "Map view showing accessible pathways and road conditions" }
+        // 1. Interactive Google Map View
+        GoogleMap(
+            modifier = Modifier.fillMaxSize(),
+            cameraPositionState = cameraPositionState
         ) {
-            Text(
-                text = "Map Layer View",
-                modifier = Modifier.align(Alignment.Center),
-                color = Color.Gray
+            Marker(
+                state = MarkerState(position = defaultLocation),
+                title = uiState.currentLocationName,
+                snippet = "Current Location"
             )
-
-            // Hazard Warning Badge
-            if (uiState.isNavigating && uiState.activeInstruction?.isHazardAhead == true) {
-                Card(
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
-                    modifier = Modifier
-                        .align(Alignment.CenterEnd)
-                        .padding(end = 16.dp)
-                        .width(200.dp)
-                        .semantics {
-                            contentDescription = "Hazard Warning: ${uiState.activeInstruction?.hazardMessage}"
-                        }
-                ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        Text(
-                            text = uiState.activeInstruction?.hazardMessage ?: "",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp,
-                            color = Color.Black
-                        )
-                    }
-                }
-            }
         }
 
-        // Top Search Bar
+        // 2. Top Floating Search Bar
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -99,7 +111,7 @@ fun HomeScreen(
             Card(
                 shape = RoundedCornerShape(24.dp),
                 colors = CardDefaults.cardColors(containerColor = Color.White),
-                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
@@ -121,11 +133,10 @@ fun HomeScreen(
                         keyboardActions = KeyboardActions(onSearch = {
                             viewModel.startNavigationTo(uiState.searchQuery)
                         }),
-                        modifier = Modifier
-                            .weight(1f)
-                            .semantics { contentDescription = "Destination search input field" }
+                        modifier = Modifier.weight(1f)
                     )
 
+                    // Microphone Icon Button
                     IconButton(
                         onClick = {
                             val permissionCheck = ContextCompat.checkSelfPermission(
@@ -133,35 +144,50 @@ fun HomeScreen(
                                 Manifest.permission.RECORD_AUDIO
                             )
                             if (permissionCheck == PackageManager.PERMISSION_GRANTED) {
-                                viewModel.startVoiceInput()
+                                try {
+                                    val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                                        putExtra(
+                                            RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                                            RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
+                                        )
+                                        putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
+                                        putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak your destination...")
+                                    }
+                                    speechLauncher.launch(intent)
+                                } catch (e: Exception) {
+                                    Toast.makeText(
+                                        context,
+                                        "Voice input not supported on this device.",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
                             } else {
                                 recordAudioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
                             }
-                        },
-                        modifier = Modifier.semantics { contentDescription = "Voice search for destination" }
+                        }
                     ) {
                         Icon(
                             imageVector = Icons.Default.Mic,
-                            contentDescription = null,
-                            tint = if (uiState.isListening) Color.Red else Color.Gray
+                            contentDescription = "Voice Search",
+                            tint = Color.DarkGray
                         )
                     }
 
+                    // Search Button
                     IconButton(
-                        onClick = { viewModel.startNavigationTo(uiState.searchQuery) },
-                        modifier = Modifier.semantics { contentDescription = "Search destination button" }
+                        onClick = { viewModel.startNavigationTo(uiState.searchQuery) }
                     ) {
                         Icon(
                             imageVector = Icons.Default.Search,
-                            contentDescription = null,
-                            tint = Color.Gray
+                            contentDescription = "Search",
+                            tint = Color.DarkGray
                         )
                     }
                 }
             }
         }
 
-        // Navigation Bar Banner
+        // 3. Active Navigation Instructions Card
         if (uiState.isNavigating && uiState.activeInstruction != null) {
             Card(
                 shape = RoundedCornerShape(16.dp),
@@ -170,7 +196,6 @@ fun HomeScreen(
                     .fillMaxWidth()
                     .align(Alignment.BottomCenter)
                     .padding(bottom = 16.dp, start = 16.dp, end = 16.dp)
-                    .semantics { contentDescription = "Active Navigation Card" }
             ) {
                 Row(
                     modifier = Modifier
@@ -180,7 +205,7 @@ fun HomeScreen(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Navigation,
-                        contentDescription = "Navigation Direction Icon",
+                        contentDescription = null,
                         tint = Color.White,
                         modifier = Modifier.size(36.dp)
                     )
@@ -199,34 +224,16 @@ fun HomeScreen(
                         )
                     }
                     IconButton(
-                        onClick = { viewModel.clearNavigation() },
-                        modifier = Modifier.semantics { contentDescription = "Cancel navigation mode" }
+                        onClick = { viewModel.clearNavigation() }
                     ) {
                         Icon(
                             imageVector = Icons.Default.Close,
-                            contentDescription = null,
+                            contentDescription = "Close navigation",
                             tint = Color.White
                         )
                     }
                 }
             }
-        }
-
-        // Speech Recognition Dialog Overlay
-        if (uiState.isListening) {
-            AlertDialog(
-                onDismissRequest = { viewModel.stopVoiceInput() },
-                title = { Text(text = "Listening...") },
-                text = { Text(text = "Please speak your destination aloud.") },
-                confirmButton = {
-                    TextButton(
-                        onClick = { viewModel.stopVoiceInput() },
-                        modifier = Modifier.semantics { contentDescription = "Cancel voice recognition" }
-                    ) {
-                        Text("Cancel")
-                    }
-                }
-            )
         }
     }
 }
