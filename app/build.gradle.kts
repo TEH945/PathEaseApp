@@ -59,6 +59,7 @@ dependencies {
     // Dependencies added for the app features
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.5")
+    implementation("androidx.compose.material:material-icons-core:1.6.8")
 
     // Google Maps
     implementation("com.google.maps.android:maps-compose:4.4.1")
