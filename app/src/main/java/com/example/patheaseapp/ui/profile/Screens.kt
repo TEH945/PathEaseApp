@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.AccessibilityNew
 import androidx.compose.material.icons.filled.AccountCircle
@@ -48,6 +49,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.tooling.preview.Preview
+import com.example.patheaseapp.data.local.AccessibilityPreferences
+import com.example.patheaseapp.data.remote.RouteHistoryItem
+import com.example.patheaseapp.data.remote.SupabaseProfile
+import com.example.patheaseapp.data.remote.SupabaseStartedLocation
+import com.example.patheaseapp.ui.theme.PathEaseAppTheme
 
 // --- 1. PROFILE SCREEN ---
 @Suppress("unused")
@@ -59,6 +66,25 @@ fun ProfileScreen(
     modifier: Modifier = Modifier,
 ) {
     val profile by viewModel.userProfile.collectAsState()
+    
+    ProfileScreenContent(
+        profile = profile,
+        onUpdateProfile = { id, name, email, contact -> viewModel.updateProfile(id, name, email, contact) },
+        onLogout = { viewModel.logout() },
+        onNavigateToSettings = onNavigateToSettings,
+        modifier = modifier,
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ProfileScreenContent(
+    profile: SupabaseProfile?,
+    onUpdateProfile: (String, String, String, String) -> Unit,
+    onLogout: () -> Unit,
+    onNavigateToSettings: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     var isEditing by remember { mutableStateOf(value = false) }
     var nameInput by remember { mutableStateOf(profile?.name ?: "") }
     var emailInput by remember { mutableStateOf(profile?.email ?: "") }
@@ -127,7 +153,7 @@ fun ProfileScreen(
                 Spacer(modifier = Modifier.height(16.dp))
                 Button(
                     onClick = {
-                        profile?.let { viewModel.updateProfile(it.id, nameInput, emailInput, emergencyContactInput) }
+                        profile?.let { onUpdateProfile(it.id, nameInput, emailInput, emergencyContactInput) }
                         isEditing = false
                     },
                     modifier = Modifier
@@ -158,7 +184,7 @@ fun ProfileScreen(
             Spacer(modifier = Modifier.weight(1f))
 
             Button(
-                onClick = { viewModel.logout() },
+                onClick = onLogout,
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -223,13 +249,45 @@ fun SettingsScreen(
 @Composable
 fun AccessibilitySettingsScreen(
     viewModel: ProfileViewModel,
+    onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val settings by viewModel.accessibilitySettings.collectAsState()
 
+    AccessibilitySettingsScreenContent(
+        settings = settings,
+        onToggleVisualAssistance = { viewModel.toggleVisualAssistance(it) },
+        onToggleVoiceGuidance = { viewModel.toggleVoiceGuidance(it) },
+        onToggleWheelchairAccess = { viewModel.toggleWheelchairAccess(it) },
+        onToggleStrollerMode = { viewModel.toggleStrollerMode(it) },
+        onBack = onBack,
+        modifier = modifier,
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AccessibilitySettingsScreenContent(
+    settings: AccessibilityPreferences,
+    onToggleVisualAssistance: (Boolean) -> Unit,
+    onToggleVoiceGuidance: (Boolean) -> Unit,
+    onToggleWheelchairAccess: (Boolean) -> Unit,
+    onToggleStrollerMode: (Boolean) -> Unit,
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Scaffold(
         modifier = modifier,
-        topBar = { TopAppBar(title = { Text("Accessibility Preferences") }) },
+        topBar = {
+            TopAppBar(
+                title = { Text("Accessibility Preferences") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+            )
+        },
     ) { padding ->
         Column(
             modifier = Modifier
@@ -241,28 +299,28 @@ fun AccessibilitySettingsScreen(
                 title = "Visual Assistance Mode",
                 description = "Enables high contrast and extra screen reader detail",
                 checked = settings.visualAssistanceMode,
-                onCheckedChange = { viewModel.toggleVisualAssistance(it) },
+                onCheckedChange = onToggleVisualAssistance,
             )
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             AccessibilityToggleRow(
                 title = "Voice Guidance",
                 description = "Turn-by-turn spoken prompts during navigation",
                 checked = settings.voiceGuidanceEnabled,
-                onCheckedChange = { viewModel.toggleVoiceGuidance(it) },
+                onCheckedChange = onToggleVoiceGuidance,
             )
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             AccessibilityToggleRow(
                 title = "Wheelchair Accessible Mode",
                 description = "Prioritizes routes with elevators and ramps",
                 checked = settings.wheelchairAccessEnabled,
-                onCheckedChange = { viewModel.toggleWheelchairAccess(it) },
+                onCheckedChange = onToggleWheelchairAccess,
             )
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             AccessibilityToggleRow(
                 title = "Stroller Friendly Mode",
                 description = "Avoids stairs and narrow pathways",
                 checked = settings.strollerModeEnabled,
-                onCheckedChange = { viewModel.toggleStrollerMode(it) },
+                onCheckedChange = onToggleStrollerMode,
             )
         }
     }
@@ -307,6 +365,20 @@ fun StarredLocationsScreen(
         viewModel.fetchStarredLocations(currentUserId)
     }
 
+    StarredLocationsScreenContent(
+        locations = locations,
+        onDeleteLocation = { locationId -> viewModel.deleteStarredLocation(currentUserId, locationId) },
+        modifier = modifier
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun StarredLocationsScreenContent(
+    locations: List<SupabaseStartedLocation>,
+    onDeleteLocation: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Scaffold(
         modifier = modifier,
         topBar = { TopAppBar(title = { Text("Starred Locations") }) },
@@ -318,7 +390,7 @@ fun StarredLocationsScreen(
                     supportingContent = { Text(location.address) },
                     trailingContent = {
                         IconButton(
-                            onClick = { viewModel.deleteStarredLocation(currentUserId, location.id) },
+                            onClick = { onDeleteLocation(location.id) },
                             modifier = Modifier.semantics { contentDescription = "Remove ${location.name} from starred locations" },
                         ) {
                             Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error)
@@ -341,6 +413,20 @@ fun HistoryScreen(
 ) {
     val history by viewModel.routeHistory.collectAsState()
 
+    HistoryScreenContent(
+        history = history,
+        onClearHistory = { viewModel.clearHistory() },
+        modifier = modifier
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun HistoryScreenContent(
+    history: List<RouteHistoryItem>,
+    onClearHistory: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Scaffold(
         modifier = modifier,
         topBar = {
@@ -348,7 +434,7 @@ fun HistoryScreen(
                 title = { Text("Route History") },
                 actions = {
                     TextButton(
-                        onClick = { viewModel.clearHistory() },
+                        onClick = onClearHistory,
                         modifier = Modifier.semantics { contentDescription = "Clear all route history button" },
                     ) {
                         Text("Clear All")
@@ -367,5 +453,80 @@ fun HistoryScreen(
                 HorizontalDivider()
             }
         }
+    }
+}
+
+// --- PREVIEWS ---
+
+@Preview(showBackground = true)
+@Composable
+fun SettingsScreenPreview() {
+    PathEaseAppTheme {
+        SettingsScreen(
+            onNavigateToAccessibility = {},
+            onNavigateToStarred = {},
+            onNavigateToHistory = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun AccessibilitySettingsScreenPreview() {
+    PathEaseAppTheme {
+        AccessibilitySettingsScreenContent(
+            settings = AccessibilityPreferences(),
+            onToggleVisualAssistance = {},
+            onToggleVoiceGuidance = {},
+            onToggleWheelchairAccess = {},
+            onToggleStrollerMode = {},
+            onBack = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun StarredLocationsScreenPreview() {
+    PathEaseAppTheme {
+        StarredLocationsScreenContent(
+            locations = listOf(
+                SupabaseStartedLocation("1", "user1", "Home", "123 Main St"),
+                SupabaseStartedLocation("2", "user1", "Office", "456 Work Ave")
+            ),
+            onDeleteLocation = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun HistoryScreenPreview() {
+    PathEaseAppTheme {
+        HistoryScreenContent(
+            history = listOf(
+                RouteHistoryItem("1", "Home", "Office", "2023-10-01 08:00"),
+                RouteHistoryItem("2", "Office", "Home", "2023-10-01 17:00")
+            ),
+            onClearHistory = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun ProfileScreenPreview() {
+    PathEaseAppTheme {
+        ProfileScreenContent(
+            profile = SupabaseProfile(
+                id = "123",
+                name = "John Doe",
+                email = "john@example.com",
+                emergencyContact = "012-3456789"
+            ),
+            onUpdateProfile = { _, _, _, _ -> },
+            onLogout = {},
+            onNavigateToSettings = {}
+        )
     }
 }

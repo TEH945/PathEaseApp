@@ -6,6 +6,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.tooling.preview.Preview
+import com.example.patheaseapp.ui.theme.PathEaseAppTheme
 
 // Dialog shown when the user has been stationary too long, asking if they're safe.
 @Composable
@@ -31,4 +33,15 @@ fun StillnessCheckDialog(
             }
         }
     )
+}
+
+@Preview(showBackground = true)
+@Composable
+fun StillnessCheckDialogPreview() {
+    PathEaseAppTheme {
+        StillnessCheckDialog(
+            onSafe = {},
+            onSOS = {}
+        )
+    }
 }

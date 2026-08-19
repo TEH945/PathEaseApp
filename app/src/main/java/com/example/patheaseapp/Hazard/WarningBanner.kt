@@ -19,6 +19,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.ui.tooling.preview.Preview
+import com.example.patheaseapp.ui.theme.PathEaseAppTheme
 
 // Composable that displays the "hazard ahead" banner card on the map screen.
 @Composable
@@ -47,5 +49,21 @@ fun WarningBanner(hazard: Hazard) {
                 fontSize = 14.sp
             )
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun WarningBannerPreview() {
+    PathEaseAppTheme {
+        WarningBanner(
+            hazard = Hazard(
+                id = "1",
+                type = "Bumpy Road",
+                lat = 0.0,
+                lng = 0.0,
+                distanceMeters = 20f
+            )
+        )
     }
 }

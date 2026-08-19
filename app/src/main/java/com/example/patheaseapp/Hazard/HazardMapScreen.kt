@@ -10,7 +10,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.core.net.toUri
+import androidx.compose.ui.tooling.preview.Preview
 import com.example.patheaseapp.ui.home.StillnessCheckDialog
+import com.example.patheaseapp.ui.theme.PathEaseAppTheme
 
 // UI screen for the hazard map — observes ViewModel state and renders it, no logic here.
 @Composable
@@ -18,9 +20,33 @@ fun HazardMapScreen(viewModel: HazardViewModel) {
     val hazards by viewModel.hazards.collectAsStateWithLifecycle()
     val nearbyWarning by viewModel.nearbyWarning.collectAsStateWithLifecycle()
     val isStillTooLong by viewModel.isStillTooLong.collectAsStateWithLifecycle()
-    val context = LocalContext.current
     val sosTriggered by viewModel.sosTriggered.collectAsStateWithLifecycle()
     val emergencyContact by viewModel.emergencyContact.collectAsStateWithLifecycle()
+
+    HazardMapScreenContent(
+        hazards = hazards,
+        nearbyWarning = nearbyWarning,
+        isStillTooLong = isStillTooLong,
+        sosTriggered = sosTriggered,
+        emergencyContact = emergencyContact,
+        onSafe = { viewModel.dismissStillnessCheck() },
+        onSOS = { viewModel.triggerSOS() },
+        onSosHandled = { viewModel.onSosHandled() },
+    )
+}
+
+@Composable
+fun HazardMapScreenContent(
+    @Suppress("unused") hazards: List<Hazard>,
+    nearbyWarning: Hazard?,
+    isStillTooLong: Boolean,
+    sosTriggered: Boolean,
+    emergencyContact: String,
+    onSafe: () -> Unit,
+    onSOS: () -> Unit,
+    onSosHandled: () -> Unit,
+) {
+    val context = LocalContext.current
 
     LaunchedEffect(sosTriggered) {
         if (sosTriggered) {
@@ -28,25 +54,35 @@ fun HazardMapScreen(viewModel: HazardViewModel) {
                 data = "tel:$emergencyContact".toUri()
             }
             context.startActivity(intent)
-            viewModel.onSosHandled()
+            onSosHandled()
         }
     }
 
     if (isStillTooLong) {
         StillnessCheckDialog(
-            onSafe = { viewModel.dismissStillnessCheck() },
-            onSOS = { viewModel.triggerSOS() }
+            onSafe = onSafe,
+            onSOS = onSOS
         )
     }
 
     Box(Modifier.fillMaxSize()) {
         nearbyWarning?.let { WarningBanner(it) }
     }
+}
 
-    if (isStillTooLong) {
-        StillnessCheckDialog(
-            onSafe = { viewModel.dismissStillnessCheck() },
-            onSOS = { /* TODO: trigger emergency contact */ }
+@Preview(showBackground = true)
+@Composable
+fun HazardMapScreenPreview() {
+    PathEaseAppTheme {
+        HazardMapScreenContent(
+            hazards = emptyList(),
+            nearbyWarning = Hazard("1", "Pothole", 0.0, 0.0, 15f),
+            isStillTooLong = false,
+            sosTriggered = false,
+            emergencyContact = "999",
+            onSafe = {},
+            onSOS = {},
+            onSosHandled = {}
         )
     }
 }

@@ -28,6 +28,8 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import androidx.compose.ui.tooling.preview.Preview
+import com.example.patheaseapp.ui.theme.PathEaseAppTheme
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.GoogleMap
@@ -40,10 +42,30 @@ import java.util.Locale
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+) {
+    val uiState by viewModel.uiState.collectAsState()
+    
+    HomeScreenContent(
+        uiState = uiState,
+        onSearchQueryChanged = { viewModel.onSearchQueryChanged(it) },
+        onStartNavigation = { viewModel.startNavigationTo(it) },
+        onClearNavigation = { viewModel.clearNavigation() },
+        modifier = modifier,
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun HomeScreenContent(
+    uiState: HomeUiState,
+    onSearchQueryChanged: (String) -> Unit,
+    onStartNavigation: (String) -> Unit,
+    onClearNavigation: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    val uiState by viewModel.uiState.collectAsState()
+    // val uiState by viewModel.uiState.collectAsState() // REMOVED
 
     // Default map position (Coordinates for center view)
     val defaultLocation = LatLng(3.1390, 101.6869)
@@ -60,8 +82,8 @@ fun HomeScreen(
                 ?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
                 ?.firstOrNull()
             spokenText?.let { text ->
-                viewModel.onSearchQueryChanged(text)
-                viewModel.startNavigationTo(text)
+                onSearchQueryChanged(text)
+                onStartNavigation(text)
             }
         }
     }
@@ -120,7 +142,7 @@ fun HomeScreen(
                 ) {
                     TextField(
                         value = uiState.searchQuery,
-                        onValueChange = { viewModel.onSearchQueryChanged(it) },
+                        onValueChange = { onSearchQueryChanged(it) },
                         placeholder = { Text("Enter a location...") },
                         colors = TextFieldDefaults.colors(
                             focusedContainerColor = Color.Transparent,
@@ -131,7 +153,7 @@ fun HomeScreen(
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                         keyboardActions = KeyboardActions(onSearch = {
-                            viewModel.startNavigationTo(uiState.searchQuery)
+                            onStartNavigation(uiState.searchQuery)
                         }),
                         modifier = Modifier.weight(1f)
                     )
@@ -175,7 +197,7 @@ fun HomeScreen(
 
                     // Search Button
                     IconButton(
-                        onClick = { viewModel.startNavigationTo(uiState.searchQuery) }
+                        onClick = { onStartNavigation(uiState.searchQuery) }
                     ) {
                         Icon(
                             imageVector = Icons.Default.Search,
@@ -188,7 +210,7 @@ fun HomeScreen(
         }
 
         // 3. Active Navigation Instructions Card
-        if (uiState.isNavigating && uiState.activeInstruction != null) {
+        if (uiState.isNavigating && (uiState.activeInstruction != null)) {
             Card(
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(containerColor = Color(0xFF1E3A8A)),
@@ -212,19 +234,19 @@ fun HomeScreen(
                     Spacer(modifier = Modifier.width(16.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = uiState.activeInstruction!!.title,
+                            text = uiState.activeInstruction.title,
                             color = Color.White,
                             fontWeight = FontWeight.Bold,
                             fontSize = 16.sp
                         )
                         Text(
-                            text = uiState.activeInstruction!!.distance,
+                            text = uiState.activeInstruction.distance,
                             color = Color.LightGray,
                             fontSize = 14.sp
                         )
                     }
                     IconButton(
-                        onClick = { viewModel.clearNavigation() }
+                        onClick = { onClearNavigation() }
                     ) {
                         Icon(
                             imageVector = Icons.Default.Close,
@@ -235,5 +257,25 @@ fun HomeScreen(
                 }
             }
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun HomeScreenPreview() {
+    PathEaseAppTheme {
+        HomeScreenContent(
+            uiState = HomeUiState(
+                currentLocationName = "Kuala Lumpur City Centre",
+                isNavigating = true,
+                activeInstruction = RouteInstruction(
+                    title = "Head North towards KL Tower",
+                    distance = "200m"
+                )
+            ),
+            onSearchQueryChanged = {},
+            onStartNavigation = {},
+            onClearNavigation = {}
+        )
     }
 }
