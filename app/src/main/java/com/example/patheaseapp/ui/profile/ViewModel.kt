@@ -15,7 +15,7 @@ import kotlinx.coroutines.launch
 
 class ProfileViewModel(
     private val supabaseClient: SupabaseClient,
-    private val accessibilityRepo: AccessibilityRepository
+    private val accessibilityRepo: AccessibilityRepository,
 ) : ViewModel() {
 
     val accessibilitySettings = accessibilityRepo.accessibilityState
@@ -30,6 +30,7 @@ class ProfileViewModel(
     val routeHistory: StateFlow<List<RouteHistoryItem>> = _routeHistory.asStateFlow()
 
     // User Profile Functions
+    @Suppress("unused")
     fun fetchProfile(userId: String) {
         viewModelScope.launch {
             try {
@@ -110,7 +111,7 @@ class ProfileViewModel(
         accessibilityRepo.updatePreferences {
             it.copy(
                 wheelchairAccessEnabled = enabled,
-                strollerModeEnabled = if (enabled) false else it.strollerModeEnabled
+                strollerModeEnabled = if (enabled) false else it.strollerModeEnabled,
             )
         }
     }
@@ -119,7 +120,7 @@ class ProfileViewModel(
         accessibilityRepo.updatePreferences {
             it.copy(
                 strollerModeEnabled = enabled,
-                wheelchairAccessEnabled = if (enabled) false else it.wheelchairAccessEnabled
+                wheelchairAccessEnabled = if (enabled) false else it.wheelchairAccessEnabled,
             )
         }
     }

@@ -2,6 +2,7 @@ package com.example.patheaseapp.data.local
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.core.content.edit
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -34,7 +35,7 @@ class AccessibilityRepository(context: Context) {
         val updated = transform(_accessibilityState.value)
         _accessibilityState.value = updated
 
-        prefs.edit().apply {
+        prefs.edit {
             putBoolean("visual_assistance", updated.visualAssistanceMode)
             putBoolean("voice_guidance", updated.voiceGuidanceEnabled)
             putBoolean("wheelchair_mode", updated.wheelchairAccessEnabled)
