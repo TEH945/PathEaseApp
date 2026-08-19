@@ -3,6 +3,7 @@ package com.example.patheaseapp.Hazard
 import android.location.Location
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.patheaseapp.sharedata.UserProfileRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -21,6 +22,11 @@ class HazardViewModel(
 
     private val _isStillTooLong = MutableStateFlow(false)
     val isStillTooLong: StateFlow<Boolean> = _isStillTooLong.asStateFlow()
+
+    private val _sosTriggered = MutableStateFlow(false)
+    val sosTriggered: StateFlow<Boolean> = _sosTriggered.asStateFlow()
+
+    val emergencyContact: StateFlow<String> = UserProfileRepository.emergencyContact
 
     init {
         viewModelScope.launch {
@@ -56,5 +62,14 @@ class HazardViewModel(
         val result = FloatArray(1)
         Location.distanceBetween(lat1, lng1, lat2, lng2, result)
         return result[0]
+    }
+
+    fun triggerSOS() {
+        _sosTriggered.value = true
+        _isStillTooLong.value = false // close the check-in dialog once SOS is triggered
+    }
+
+    fun onSosHandled() {
+        _sosTriggered.value = false // reset after the call intent has been launched
     }
 }
