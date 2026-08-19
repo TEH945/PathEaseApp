@@ -46,10 +46,10 @@ class ProfileViewModel(
         }
     }
 
-    fun updateProfile(userId: String, newName: String, newEmail: String) {
+    fun updateProfile(userId: String, newName: String, newEmail: String,newPhone: String) {
         viewModelScope.launch {
             try {
-                val updated = SupabaseProfile(id = userId, name = newName, email = newEmail)
+                val updated = SupabaseProfile(id = userId, name = newName, email = newEmail, emergencyContact = newPhone)
                 supabaseClient.postgrest["profiles"].update(updated) {
                     filter { eq("id", userId) }
                 }

@@ -62,6 +62,7 @@ fun ProfileScreen(
     var isEditing by remember { mutableStateOf(value = false) }
     var nameInput by remember { mutableStateOf(profile?.name ?: "") }
     var emailInput by remember { mutableStateOf(profile?.email ?: "") }
+    var emergencyContactInput by remember { mutableStateOf(profile?.emergencyContact ?: "") }
 
     Scaffold(
         modifier = modifier,
@@ -112,10 +113,21 @@ fun ProfileScreen(
                         .fillMaxWidth()
                         .semantics { contentDescription = "Edit email field" },
                 )
+
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = emergencyContactInput,
+                    onValueChange = { emergencyContactInput = it },
+                    label = { Text("Phone Number") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .semantics { contentDescription = "Edit phone number field" },
+                )
+
                 Spacer(modifier = Modifier.height(16.dp))
                 Button(
                     onClick = {
-                        profile?.let { viewModel.updateProfile(it.id, nameInput, emailInput) }
+                        profile?.let { viewModel.updateProfile(it.id, nameInput, emailInput, emergencyContactInput) }
                         isEditing = false
                     },
                     modifier = Modifier
@@ -127,11 +139,13 @@ fun ProfileScreen(
             } else {
                 Text(text = profile?.name ?: "Guest User", style = MaterialTheme.typography.headlineMedium)
                 Text(text = profile?.email ?: "No email set", style = MaterialTheme.typography.bodyMedium)
+                Text(text = profile?.emergencyContact ?: "No phone number set", style = MaterialTheme.typography.bodyMedium)
                 Spacer(modifier = Modifier.height(16.dp))
                 OutlinedButton(
                     onClick = {
                         nameInput = profile?.name ?: ""
                         emailInput = profile?.email ?: ""
+                        emergencyContactInput = profile?.emergencyContact ?: ""
                         isEditing = true
                     },
                     modifier = Modifier
