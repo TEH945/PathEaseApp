@@ -7,6 +7,7 @@ import com.example.patheaseapp.data.remote.RouteHistoryItem
 import com.example.patheaseapp.data.remote.SupabaseProfile
 import com.example.patheaseapp.data.remote.SupabaseStartedLocation
 import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -23,6 +24,12 @@ class ProfileViewModel(
     private val _userProfile = MutableStateFlow<SupabaseProfile?>(null)
     val userProfile: StateFlow<SupabaseProfile?> = _userProfile.asStateFlow()
 
+    private val _isProfileLoading = MutableStateFlow(false)
+    val isProfileLoading: StateFlow<Boolean> = _isProfileLoading.asStateFlow()
+
+    private val _profileError = MutableStateFlow<String?>(null)
+    val profileError: StateFlow<String?> = _profileError.asStateFlow()
+
     private val _starredLocations = MutableStateFlow<List<SupabaseStartedLocation>>(emptyList())
     val starredLocations: StateFlow<List<SupabaseStartedLocation>> = _starredLocations.asStateFlow()
 
@@ -30,9 +37,10 @@ class ProfileViewModel(
     val routeHistory: StateFlow<List<RouteHistoryItem>> = _routeHistory.asStateFlow()
 
     // User Profile Functions
-    @Suppress("unused")
     fun fetchProfile(userId: String) {
         viewModelScope.launch {
+            _isProfileLoading.value = true
+            _profileError.value = null
             try {
                 val profile = supabaseClient.postgrest["profiles"]
                     .select {
@@ -41,27 +49,49 @@ class ProfileViewModel(
                     .decodeSingle<SupabaseProfile>()
                 _userProfile.value = profile
             } catch (e: Exception) {
+                _profileError.value = "Profile not found. Create one by editing."
                 e.printStackTrace()
+            } finally {
+                _isProfileLoading.value = false
             }
         }
     }
 
-    fun updateProfile(userId: String, newName: String, newEmail: String,newPhone: String) {
+    fun updateProfile(userId: String, newName: String, newEmail: String, newPhone: String) {
         viewModelScope.launch {
+            _isProfileLoading.value = true
+            _profileError.value = null
             try {
-                val updated = SupabaseProfile(id = userId, name = newName, email = newEmail, emergencyContact = newPhone)
-                supabaseClient.postgrest["profiles"].update(updated) {
-                    filter { eq("id", userId) }
-                }
+                val updated = SupabaseProfile(
+                    id = userId,
+                    name = newName,
+                    email = newEmail,
+                    emergencyContact = newPhone,
+                )
+                supabaseClient.postgrest["profiles"].upsert(updated)
                 _userProfile.value = updated
             } catch (e: Exception) {
+                _profileError.value = "Failed to save profile: ${e.message}"
                 e.printStackTrace()
+            } finally {
+                _isProfileLoading.value = false
             }
         }
     }
 
     fun logout() {
-        _userProfile.value = null
+        viewModelScope.launch {
+            try {
+                supabaseClient.auth.signOut()
+                _userProfile.value = null
+                _starredLocations.value = emptyList()
+                _routeHistory.value = emptyList()
+            } catch (e: Exception) {
+                // If network sign out fails, force clear local state to allow login screen to show
+                _userProfile.value = null 
+                e.printStackTrace()
+            }
+        }
     }
 
     // Starred Locations Functions

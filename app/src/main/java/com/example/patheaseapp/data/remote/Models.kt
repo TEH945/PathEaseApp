@@ -9,7 +9,7 @@ data class SupabaseProfile(
     val id: String,
     val name: String,
     val email: String,
-    val emergencyContact: String
+    @SerialName("emergency_contact") val emergencyContact: String,
 )
 
 @Serializable

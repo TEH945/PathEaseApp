@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -62,14 +63,23 @@ import com.example.patheaseapp.ui.theme.PathEaseAppTheme
 @Composable
 fun ProfileScreen(
     viewModel: ProfileViewModel,
+    userId: String,
     onNavigateToSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val profile by viewModel.userProfile.collectAsState()
+    val isLoading by viewModel.isProfileLoading.collectAsState()
+    val error by viewModel.profileError.collectAsState()
+
+    LaunchedEffect(userId) {
+        viewModel.fetchProfile(userId)
+    }
     
     ProfileScreenContent(
         profile = profile,
-        onUpdateProfile = { id, name, email, contact -> viewModel.updateProfile(id, name, email, contact) },
+        isLoading = isLoading,
+        error = error,
+        onUpdateProfile = { name, email, contact -> viewModel.updateProfile(userId, name, email, contact) },
         onLogout = { viewModel.logout() },
         onNavigateToSettings = onNavigateToSettings,
         modifier = modifier,
@@ -80,15 +90,19 @@ fun ProfileScreen(
 @Composable
 fun ProfileScreenContent(
     profile: SupabaseProfile?,
-    onUpdateProfile: (String, String, String, String) -> Unit,
+    isLoading: Boolean,
+    error: String?,
+    onUpdateProfile: (String, String, String) -> Unit,
     onLogout: () -> Unit,
     onNavigateToSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var isEditing by remember { mutableStateOf(value = false) }
-    var nameInput by remember { mutableStateOf(profile?.name ?: "") }
-    var emailInput by remember { mutableStateOf(profile?.email ?: "") }
-    var emergencyContactInput by remember { mutableStateOf(profile?.emergencyContact ?: "") }
+    var isEditing by remember { mutableStateOf(false) }
+    
+    // Use remember(profile) to sync inputs whenever the profile data updates from server
+    var nameInput by remember(profile) { mutableStateOf(profile?.name ?: "") }
+    var emailInput by remember(profile) { mutableStateOf(profile?.email ?: "") }
+    var emergencyContactInput by remember(profile) { mutableStateOf(profile?.emergencyContact ?: "") }
 
     Scaffold(
         modifier = modifier,
@@ -121,11 +135,21 @@ fun ProfileScreenContent(
             )
             Spacer(modifier = Modifier.height(16.dp))
 
+            if (isLoading) {
+                CircularProgressIndicator()
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
+            error?.let {
+                Text(text = it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
             if (isEditing) {
                 OutlinedTextField(
                     value = nameInput,
                     onValueChange = { nameInput = it },
-                    label = { Text("name") },
+                    label = { Text("Name") },
                     modifier = Modifier
                         .fillMaxWidth()
                         .semantics { contentDescription = "Edit name field" },
@@ -153,9 +177,10 @@ fun ProfileScreenContent(
                 Spacer(modifier = Modifier.height(16.dp))
                 Button(
                     onClick = {
-                        profile?.let { onUpdateProfile(it.id, nameInput, emailInput, emergencyContactInput) }
+                        onUpdateProfile(nameInput, emailInput, emergencyContactInput)
                         isEditing = false
                     },
+                    enabled = !isLoading,
                     modifier = Modifier
                         .fillMaxWidth()
                         .semantics { contentDescription = "Save profile changes button" },
@@ -524,7 +549,9 @@ fun ProfileScreenPreview() {
                 email = "john@example.com",
                 emergencyContact = "012-3456789"
             ),
-            onUpdateProfile = { _, _, _, _ -> },
+            isLoading = false,
+            error = null,
+            onUpdateProfile = { _, _, _ -> },
             onLogout = {},
             onNavigateToSettings = {}
         )

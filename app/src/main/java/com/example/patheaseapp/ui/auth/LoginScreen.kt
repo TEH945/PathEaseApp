@@ -28,7 +28,14 @@ fun LoginScreen(
     var passwordVisible by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var successMessage by remember { mutableStateOf<String?>(null) }
     var isSignUp by remember { mutableStateOf(false) }
+
+    // Clear messages when switching between Login and Sign Up
+    LaunchedEffect(isSignUp) {
+        errorMessage = null
+        successMessage = null
+    }
 
     val scope = rememberCoroutineScope()
 
@@ -49,7 +56,11 @@ fun LoginScreen(
 
         OutlinedTextField(
             value = email,
-            onValueChange = { email = it },
+            onValueChange = { 
+                email = it
+                errorMessage = null
+                successMessage = null
+            },
             label = { Text("Email") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
@@ -73,12 +84,48 @@ fun LoginScreen(
             }
         )
 
-        errorMessage?.let {
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(text = it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+        if (!isSignUp) {
+            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
+                TextButton(
+                    onClick = {
+                        scope.launch {
+                            if (email.isBlank()) {
+                                errorMessage = "Please enter your email first"
+                                return@launch
+                            }
+                            isLoading = true
+                            errorMessage = null
+                            successMessage = null
+                            try {
+                                supabaseClient.auth.resetPasswordForEmail(email.trim())
+                                successMessage = "Reset link sent to your email"
+                            } catch (e: Exception) {
+                                errorMessage = e.message ?: "Failed to send reset email"
+                            } finally {
+                                isLoading = false
+                            }
+                        }
+                    },
+                    enabled = !isLoading
+                ) {
+                    Text("Forgot Password?", style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        } else {
+            Spacer(modifier = Modifier.height(16.dp))
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        errorMessage?.let {
+            Text(text = it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+
+        successMessage?.let {
+            Text(text = it, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall)
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
 
         Button(
             onClick = {
