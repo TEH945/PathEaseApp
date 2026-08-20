@@ -94,6 +94,22 @@ class ProfileViewModel(
         }
     }
 
+    fun updatePassword(newPassword: String, onSuccess: () -> Unit, onError: (String) -> Unit) {
+        viewModelScope.launch {
+            _isProfileLoading.value = true
+            try {
+                supabaseClient.auth.updateUser {
+                    password = newPassword
+                }
+                onSuccess()
+            } catch (e: Exception) {
+                onError(e.message ?: "Failed to update password")
+            } finally {
+                _isProfileLoading.value = false
+            }
+        }
+    }
+
     // Starred Locations Functions
     fun fetchStarredLocations(userId: String) {
         viewModelScope.launch {
