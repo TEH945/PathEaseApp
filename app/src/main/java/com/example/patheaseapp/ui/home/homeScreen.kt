@@ -1,6 +1,7 @@
 package com.example.patheaseapp.ui.home
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -17,6 +18,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -29,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.core.net.toUri
 import com.example.patheaseapp.ui.theme.PathEaseAppTheme
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
@@ -37,20 +40,42 @@ import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
 import java.util.Locale
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.patheaseapp.Hazard.WarningBanner
+import com.example.patheaseapp.Hazard.ReportHazardScreen
+import androidx.compose.material3.FloatingActionButton
+import com.example.patheaseapp.Hazard.HazardViewModel
+import com.example.patheaseapp.Hazard.StartLocationUpdates
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel,
+    hazardViewModel: HazardViewModel = androidx.lifecycle.viewmodel.compose.viewModel(),
     modifier: Modifier = Modifier,
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val nearbyWarning by hazardViewModel.nearbyWarning.collectAsStateWithLifecycle()
+    val isStillTooLong by hazardViewModel.isStillTooLong.collectAsStateWithLifecycle()
+    val sosTriggered by hazardViewModel.sosTriggered.collectAsStateWithLifecycle()
+    val emergencyContact by hazardViewModel.emergencyContact.collectAsStateWithLifecycle()
     
     HomeScreenContent(
         uiState = uiState,
         onSearchQueryChanged = { viewModel.onSearchQueryChanged(it) },
         onStartNavigation = { viewModel.startNavigationTo(it) },
         onClearNavigation = { viewModel.clearNavigation() },
+        hazardViewModel = hazardViewModel,
+        nearbyWarning = nearbyWarning,
+        isStillTooLong = isStillTooLong,
+        sosTriggered = sosTriggered,
+        emergencyContact = emergencyContact,
+        onSafe = { hazardViewModel.dismissStillnessCheck() },
+        onSOS = { hazardViewModel.triggerSOS() },
+        onSosHandled = { hazardViewModel.onSosHandled() },
+        onReportHazard = { type, lat, lng ->
+            hazardViewModel.reportHazard(type, lat, lng, photoUri = null)
+        },
         modifier = modifier,
     )
 }
@@ -62,10 +87,52 @@ fun HomeScreenContent(
     onSearchQueryChanged: (String) -> Unit,
     onStartNavigation: (String) -> Unit,
     onClearNavigation: () -> Unit,
+    hazardViewModel: HazardViewModel,
+    nearbyWarning: com.example.patheaseapp.Hazard.Hazard? = null,
+    isStillTooLong: Boolean = false,
+    sosTriggered: Boolean = false,
+    emergencyContact: String = "999",
+    onSafe: () -> Unit = {},
+    onSOS: () -> Unit = {},
+    onSosHandled: () -> Unit = {},
+    onReportHazard: (String, Double, Double) -> Unit = { _, _, _ -> },
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    // val uiState by viewModel.uiState.collectAsState() // REMOVED
+    StartLocationUpdates { lat, lng ->
+        hazardViewModel.onLocationUpdate(lat, lng)
+    }
+    var showReportHazard by remember { mutableStateOf(false) }
+
+    if (showReportHazard) {
+        ReportHazardScreen(
+            onSubmit = { type, lat, lng ->
+                onReportHazard(type, lat, lng)
+                showReportHazard = false
+            },
+            onCancel = { showReportHazard = false }
+        )
+        return
+    }
+
+    LaunchedEffect(nearbyWarning) {
+        nearbyWarning?.let { hazard ->
+            com.example.patheaseapp.Hazard.vibrate(context)
+            com.example.patheaseapp.Hazard.speakWarning(
+                context,
+                "${hazard.type} ahead, ${hazard.distanceMeters.toInt()} meters"
+            )
+        }
+    }
+    LaunchedEffect(sosTriggered) {
+        if (sosTriggered) {
+            val intent = Intent(Intent.ACTION_DIAL).apply {
+                data = "tel:$emergencyContact".toUri()
+            }
+            context.startActivity(intent)
+            onSosHandled()
+        }
+    }
 
     // Default map position (Coordinates for center view)
     val defaultLocation = LatLng(3.1390, 101.6869)
@@ -257,9 +324,30 @@ fun HomeScreenContent(
                 }
             }
         }
+
+        nearbyWarning?.let {
+            Box(modifier = Modifier.align(Alignment.TopCenter).padding(top = 80.dp)) {
+                WarningBanner(it)
+            }
+        }
+
+        FloatingActionButton(
+            onClick = { showReportHazard = true },
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(16.dp)
+        ) {
+            Icon(Icons.Default.Warning, contentDescription = "Report a hazard")
+        }
+    }
+
+    // NEW: stillness/SOS dialog
+    if (isStillTooLong) {
+        StillnessCheckDialog(onSafe = onSafe, onSOS = onSOS)
     }
 }
 
+@SuppressLint("ViewModelConstructorInComposable")
 @Preview(showBackground = true)
 @Composable
 fun HomeScreenPreview() {
@@ -275,7 +363,8 @@ fun HomeScreenPreview() {
             ),
             onSearchQueryChanged = {},
             onStartNavigation = {},
-            onClearNavigation = {}
+            onClearNavigation = {},
+            hazardViewModel = HazardViewModel(),
         )
     }
 }
