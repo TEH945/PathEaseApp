@@ -24,7 +24,7 @@ fun CameraScreen(
         contract = ActivityResultContracts.TakePicturePreview()
     ) { bitmap -> capturedBitmap = bitmap }
 
-    LaunchedEffect(Unit) { cameraLauncher.launch() }
+    LaunchedEffect(Unit) { cameraLauncher.launch(null) }
 
     Column(
         modifier = Modifier.fillMaxSize().padding(16.dp),
@@ -39,7 +39,7 @@ fun CameraScreen(
             Row(modifier = Modifier.padding(top = 16.dp)) {
                 Button(onClick = { onPhotoCaptured(capturedBitmap) }) { Text("Use Photo") }
                 Spacer(modifier = Modifier.width(12.dp))
-                OutlinedButton(onClick = { cameraLauncher.launch() }) { Text("Retake") }
+                OutlinedButton(onClick = { cameraLauncher.launch(null) }) { Text("Retake") }
             }
         } else {
             Text("Opening camera...")
