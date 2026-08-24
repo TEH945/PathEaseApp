@@ -2,9 +2,15 @@ package com.example.patheaseapp
 
 import android.os.Bundle
 import android.content.Intent
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import com.example.patheaseapp.data.local.AccessibilityRepository
 import com.example.patheaseapp.ui.theme.PathEaseAppTheme
 import io.github.jan.supabase.annotations.SupabaseInternal
 import io.github.jan.supabase.createSupabaseClient
@@ -38,7 +44,19 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             PathEaseAppTheme {
-                PathEaseApp(supabaseClient)
+                val accessibilityRepo = remember { AccessibilityRepository(applicationContext) }
+                val accessibilityState by accessibilityRepo.accessibilityState.collectAsState()
+
+                // Handle Keep Screen On setting
+                LaunchedEffect(accessibilityState.keepScreenOn) {
+                    if (accessibilityState.keepScreenOn) {
+                        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                    } else {
+                        window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                    }
+                }
+
+                PathEaseApp(supabaseClient, accessibilityRepo)
             }
         }
     }

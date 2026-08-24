@@ -12,6 +12,8 @@ data class AccessibilityPreferences(
     val voiceGuidanceEnabled: Boolean = true,
     val wheelchairAccessEnabled: Boolean = false,
     val strollerModeEnabled: Boolean = false,
+    val blindModeEnabled: Boolean = false,
+    val keepScreenOn: Boolean = false,
 )
 
 class AccessibilityRepository(context: Context) {
@@ -27,7 +29,8 @@ class AccessibilityRepository(context: Context) {
             voiceGuidanceEnabled = prefs.getBoolean("voice_guidance", true),
             wheelchairAccessEnabled = prefs.getBoolean("wheelchair_mode", false),
             strollerModeEnabled = prefs.getBoolean("stroller_mode", false),
-
+            blindModeEnabled = prefs.getBoolean("Blind_mode", false),
+            keepScreenOn = prefs.getBoolean("keep_screen_on", false),
         )
     }
 
@@ -40,6 +43,8 @@ class AccessibilityRepository(context: Context) {
             putBoolean("voice_guidance", updated.voiceGuidanceEnabled)
             putBoolean("wheelchair_mode", updated.wheelchairAccessEnabled)
             putBoolean("stroller_mode", updated.strollerModeEnabled)
+            putBoolean("Blind_Mode", updated.blindModeEnabled)
+            putBoolean("keep_screen_on", updated.keepScreenOn)
         }
 
     }

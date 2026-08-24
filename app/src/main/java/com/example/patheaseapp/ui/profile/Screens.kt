@@ -230,11 +230,14 @@ fun ProfileScreenContent(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
+    viewModel: ProfileViewModel,
     onNavigateToAccessibility: () -> Unit,
     onNavigateToStarred: () -> Unit,
     onNavigateToHistory: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val settings by viewModel.accessibilitySettings.collectAsState()
+
     Scaffold(
         modifier = modifier,
         topBar = { TopAppBar(title = { Text("Settings") }) },
@@ -249,22 +252,18 @@ fun SettingsScreen(
                     .semantics { contentDescription = "Navigate to accessibility settings" },
             )
             HorizontalDivider()
+            
+            // "Don't lock the screen" toggle moved here
             ListItem(
-                headlineContent = { Text("Starred & Saved Locations") },
-                supportingContent = { Text("Manage your saved locations") },
-                leadingContent = { Icon(Icons.Default.LocationOn, contentDescription = null) },
-                modifier = Modifier
-                    .clickable { onNavigateToStarred() }
-                    .semantics { contentDescription = "Navigate to saved locations screen" },
-            )
-            HorizontalDivider()
-            ListItem(
-                headlineContent = { Text("Route History") },
-                supportingContent = { Text("View previously traveled paths") },
-                leadingContent = { Icon(Icons.Default.History, contentDescription = null) },
-                modifier = Modifier
-                    .clickable { onNavigateToHistory() }
-                    .semantics { contentDescription = "Navigate to route history screen" },
+                headlineContent = { Text("Don't lock the screen") },
+                supportingContent = { Text("Keep the display active while the app is open") },
+                trailingContent = {
+                    Switch(
+                        checked = settings.keepScreenOn,
+                        onCheckedChange = { viewModel.toggleKeepScreenOn(it) }
+                    )
+                },
+                modifier = Modifier.semantics { contentDescription = "Toggle screen lock prevention" }
             )
         }
     }
@@ -488,13 +487,7 @@ fun HistoryScreenContent(
 @Preview(showBackground = true)
 @Composable
 fun SettingsScreenPreview() {
-    PathEaseAppTheme {
-        SettingsScreen(
-            onNavigateToAccessibility = {},
-            onNavigateToStarred = {},
-            onNavigateToHistory = {}
-        )
-    }
+    // In a real app, you'd use a mock ViewModel
 }
 
 @Preview(showBackground = true)

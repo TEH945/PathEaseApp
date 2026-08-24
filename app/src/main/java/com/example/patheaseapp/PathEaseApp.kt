@@ -44,9 +44,10 @@ sealed class Screen(@Suppress("unused") val route: String, val title: String, va
 }
 
 @Composable
-fun PathEaseApp(supabaseClient: io.github.jan.supabase.SupabaseClient) {
-    val context = LocalContext.current
-    
+fun PathEaseApp(
+    supabaseClient: io.github.jan.supabase.SupabaseClient,
+    accessibilityRepo: AccessibilityRepository
+) {
     val sessionStatus by supabaseClient.auth.sessionStatus.collectAsState()
     val session = (sessionStatus as? SessionStatus.Authenticated)?.session
 
@@ -85,8 +86,6 @@ fun PathEaseApp(supabaseClient: io.github.jan.supabase.SupabaseClient) {
         // For simplicity, we can let the user manually go to profile or handle it via a flag
         // Here we handle the post-login "Recovery" state if needed
         val userId = session.user?.id ?: ""
-        
-        val accessibilityRepo = remember { AccessibilityRepository(context) }
         
         var currentTab by remember { mutableStateOf<Screen>(Screen.Map) }
         val homeViewModel: HomeViewModel = viewModel()
@@ -140,6 +139,7 @@ fun PathEaseApp(supabaseClient: io.github.jan.supabase.SupabaseClient) {
                     modifier = Modifier.padding(innerPadding)
                 )
                 Screen.Settings -> SettingsScreen(
+                    viewModel = profileViewModel,
                     onNavigateToAccessibility = { currentTab = Screen.Accessibility },
                     onNavigateToStarred = { currentTab = Screen.Starred },
                     onNavigateToHistory = { currentTab = Screen.History },

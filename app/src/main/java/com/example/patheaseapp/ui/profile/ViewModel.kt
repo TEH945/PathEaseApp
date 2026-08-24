@@ -61,7 +61,7 @@ class ProfileViewModel(
                         ?: metadata?.get("full_name")?.jsonPrimitive?.contentOrNull
                         ?: metadata?.get("display_name")?.jsonPrimitive?.contentOrNull
                         ?: currentUser.email?.substringBefore("@") // Fallback to email username
-                        ?: "User"
+                        ?: ""
                     
                     val authEmail = currentUser.email ?: ""
                     
@@ -178,5 +178,9 @@ class ProfileViewModel(
                 wheelchairAccessEnabled = if (enabled) false else it.wheelchairAccessEnabled,
             )
         }
+    }
+
+    fun toggleKeepScreenOn(enabled: Boolean) {
+        accessibilityRepo.updatePreferences { it.copy(keepScreenOn = enabled) }
     }
 }
