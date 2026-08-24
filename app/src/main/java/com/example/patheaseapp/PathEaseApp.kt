@@ -54,14 +54,16 @@ fun PathEaseApp(
     var isForgotPasswordVisible by remember { mutableStateOf(false) }
     var isRecoveryMode by remember { mutableStateOf(false) }
 
-    // Detect if we just entered via a recovery link
-    LaunchedEffect(sessionStatus) {
-        if (sessionStatus is SessionStatus.Authenticated) {
-            // Check if the current session was just imported via recovery
-            // In a real app, you might check a flag set in MainActivity
-            if (isForgotPasswordVisible) {
-                isRecoveryMode = true
-            }
+    val context = LocalContext.current
+    val intent = (context as? android.app.Activity)?.intent
+
+    // Detect if we entered via a recovery link
+    LaunchedEffect(sessionStatus, intent) {
+        val uri = intent?.data
+        if (uri != null && uri.toString().contains("type=recovery")) {
+            isRecoveryMode = true
+        } else if (sessionStatus is SessionStatus.Authenticated && isForgotPasswordVisible) {
+            isRecoveryMode = true
         }
     }
 
@@ -70,6 +72,10 @@ fun PathEaseApp(
             ForgotPasswordScreen(
                 supabaseClient = supabaseClient,
                 onBack = { 
+                    isForgotPasswordVisible = false
+                    isRecoveryMode = false
+                },
+                onSuccess = {
                     isForgotPasswordVisible = false
                     isRecoveryMode = false
                 },

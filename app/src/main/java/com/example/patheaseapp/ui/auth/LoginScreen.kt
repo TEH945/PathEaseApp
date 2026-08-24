@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.providers.builtin.Email
+import com.example.patheaseapp.util.toUserFriendlyMessage
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -147,8 +148,7 @@ fun LoginScreen(
                             }
                         }
                     } catch (e: Exception) {
-                        // Clean up the error message to remove technical details (URLs, Headers)
-                        errorMessage = e.message?.substringBefore("URL:")?.trim() ?: "Authentication failed"
+                        errorMessage = e.toUserFriendlyMessage()
                     } finally {
                         isLoading = false
                     }

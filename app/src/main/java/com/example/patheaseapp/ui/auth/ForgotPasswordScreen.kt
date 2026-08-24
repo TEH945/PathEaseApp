@@ -14,6 +14,9 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
+import io.github.jan.supabase.auth.status.SessionStatus
+import io.github.jan.supabase.exceptions.RestException
+import com.example.patheaseapp.util.toUserFriendlyMessage
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -21,6 +24,7 @@ import kotlinx.coroutines.launch
 fun ForgotPasswordScreen(
     supabaseClient: SupabaseClient,
     onBack: () -> Unit,
+    onSuccess: () -> Unit = {},
     isRecoveryMode: Boolean = false // Set to true if app opened via recovery link
 ) {
     var email by remember { mutableStateOf("") }
@@ -30,6 +34,9 @@ fun ForgotPasswordScreen(
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var successMessage by remember { mutableStateOf<String?>(null) }
+    
+    val sessionStatus by supabaseClient.auth.sessionStatus.collectAsState()
+    val isSessionReady = sessionStatus is SessionStatus.Authenticated
     
     val scope = rememberCoroutineScope()
 
@@ -85,11 +92,11 @@ fun ForgotPasswordScreen(
                                 // Specify the redirect URL so it matches your Android Manifest
                                 supabaseClient.auth.resetPasswordForEmail(
                                     email = email.trim(),
-                                    redirectUrl = "https://mmdkfjptbjkabbspuzfq.supabase.co"
+                                    redirectUrl = "patheaseapp://reset-password"
                                 )
                                 successMessage = "Reset link sent! Please check your email inbox."
                             } catch (e: Exception) {
-                                errorMessage = e.message?.substringBefore("URL:")?.trim() ?: "Failed to send reset email"
+                                errorMessage = e.toUserFriendlyMessage()
                             } finally {
                                 isLoading = false
                             }
@@ -143,6 +150,10 @@ fun ForgotPasswordScreen(
                 Button(
                     onClick = {
                         scope.launch {
+                            if (!isSessionReady) {
+                                errorMessage = "Session not ready yet. Please wait a moment or try opening the link again."
+                                return@launch
+                            }
                             if (newPassword.length < 6) {
                                 errorMessage = "Password must be at least 6 characters"
                                 return@launch
@@ -158,9 +169,10 @@ fun ForgotPasswordScreen(
                                     password = newPassword
                                 }
                                 successMessage = "Password updated! You can now log in with your new password."
-                                // Optionally auto-logout to force fresh login or just navigate home
+                                kotlinx.coroutines.delay(2000)
+                                onSuccess()
                             } catch (e: Exception) {
-                                errorMessage = e.message?.substringBefore("URL:")?.trim() ?: "Failed to update password"
+                                errorMessage = e.toUserFriendlyMessage()
                             } finally {
                                 isLoading = false
                             }
@@ -171,6 +183,8 @@ fun ForgotPasswordScreen(
                 ) {
                     if (isLoading) {
                         CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                    } else if (!isSessionReady) {
+                        Text("Waiting for session...")
                     } else {
                         Text("Update Password")
                     }

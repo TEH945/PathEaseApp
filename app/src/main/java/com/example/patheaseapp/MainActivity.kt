@@ -18,10 +18,13 @@ import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.parseFragmentAndImportSession
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     
     // Define Supabase client at activity level to handle deep links
+    @OptIn(SupabaseInternal::class)
     private val supabaseClient by lazy {
         createSupabaseClient(
             supabaseUrl = "https://mmdkfjptbjkabbspuzfq.supabase.co",
@@ -29,6 +32,13 @@ class MainActivity : ComponentActivity() {
         ) {
             install(Postgrest)
             install(Auth)
+            httpConfig {
+                install(io.ktor.client.plugins.HttpTimeout) {
+                    requestTimeoutMillis = 60000L
+                    connectTimeoutMillis = 60000L
+                    socketTimeoutMillis = 60000L
+                }
+            }
         }
     }
 
@@ -38,7 +48,14 @@ class MainActivity : ComponentActivity() {
         
         // Handle deep link when app is created
         intent?.data?.let { uri ->
-            supabaseClient.auth.parseFragmentAndImportSession(uri.toString())
+            lifecycleScope.launch {
+                try {
+                    supabaseClient.auth.parseFragmentAndImportSession(uri.toString())
+                    android.util.Log.d("SupabaseAuth", "Session imported successfully from fragment")
+                } catch (e: Exception) {
+                    android.util.Log.e("SupabaseAuth", "Failed to import session: ${e.message}")
+                }
+            }
         }
         
         enableEdgeToEdge()
@@ -64,9 +81,16 @@ class MainActivity : ComponentActivity() {
     @OptIn(SupabaseInternal::class)
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        // Handle deep link when app is already running
+        setIntent(intent) // Important: update the intent
         intent?.data?.let { uri ->
-            supabaseClient.auth.parseFragmentAndImportSession(uri.toString())
+            lifecycleScope.launch {
+                try {
+                    supabaseClient.auth.parseFragmentAndImportSession(uri.toString())
+                    android.util.Log.d("SupabaseAuth", "Session imported successfully onNewIntent")
+                } catch (e: Exception) {
+                    android.util.Log.e("SupabaseAuth", "Failed to import session onNewIntent: ${e.message}")
+                }
+            }
         }
     }
 }

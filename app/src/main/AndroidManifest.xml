@@ -32,12 +32,11 @@
             android:theme="@style/Theme.PathEaseApp"
             android:windowSoftInputMode="adjustResize">
 
-            <intent-filter android:autoVerify="true">
+            <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <!-- Updated to match the correct Supabase Project ID -->
-                <data android:scheme="https" android:host="mmdkfjptbjkabbspuzfq.supabase.co" />
+                <data android:scheme="patheaseapp" android:host="reset-password" />
             </intent-filter>
 
             <intent-filter>

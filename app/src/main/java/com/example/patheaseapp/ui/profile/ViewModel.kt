@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import com.example.patheaseapp.util.toUserFriendlyMessage
 
 class ProfileViewModel(
     private val supabaseClient: SupabaseClient,
@@ -96,7 +97,7 @@ class ProfileViewModel(
                 supabaseClient.postgrest["profiles"].upsert(updated)
                 _userProfile.value = updated
             } catch (e: Exception) {
-                _profileError.value = "Failed to save profile: ${e.message}"
+                _profileError.value = e.toUserFriendlyMessage()
                 e.printStackTrace()
             } finally {
                 _isProfileLoading.value = false
