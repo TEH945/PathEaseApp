@@ -54,6 +54,7 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation("com.google.android.gms:play-services-location:21.3.0")
 
     // Dependencies added for the app features
     implementation("androidx.compose.material:material-icons-extended")
