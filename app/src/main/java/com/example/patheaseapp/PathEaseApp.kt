@@ -32,6 +32,7 @@ import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.status.SessionStatus
 import androidx.compose.ui.platform.LocalContext
 import com.example.patheaseapp.ui.auth.LoginScreen
+import com.example.patheaseapp.ui.auth.ForgotPasswordScreen
 
 sealed class Screen(@Suppress("unused") val route: String, val title: String, val icon: ImageVector) {
     object History : Screen("history", "History", Icons.Default.History)
@@ -43,26 +44,46 @@ sealed class Screen(@Suppress("unused") val route: String, val title: String, va
 }
 
 @Composable
-fun PathEaseApp() {
+fun PathEaseApp(supabaseClient: io.github.jan.supabase.SupabaseClient) {
     val context = LocalContext.current
-    
-    // Initialize dummy Supabase client (Replace with real credentials later)
-    val supabaseClient = remember {
-        createSupabaseClient(
-            supabaseUrl = "https://mmdkfjptbjkabbspuzfq.supabase.co",
-            supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1tZGtmanB0YmprYWJic3B1emZxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcyMjE5NjcsImV4cCI6MjEwMjc5Nzk2N30.sEOCyQgX6qnvgT392f-uatqj3Wga-NfhOdbblpGhkz8"
-        ) {
-            install(Postgrest)
-            install(Auth)
-        }
-    }
     
     val sessionStatus by supabaseClient.auth.sessionStatus.collectAsState()
     val session = (sessionStatus as? SessionStatus.Authenticated)?.session
-    
-    if (session == null) {
-        LoginScreen(supabaseClient = supabaseClient)
+
+    var isForgotPasswordVisible by remember { mutableStateOf(false) }
+    var isRecoveryMode by remember { mutableStateOf(false) }
+
+    // Detect if we just entered via a recovery link
+    LaunchedEffect(sessionStatus) {
+        if (sessionStatus is SessionStatus.Authenticated) {
+            // Check if the current session was just imported via recovery
+            // In a real app, you might check a flag set in MainActivity
+            if (isForgotPasswordVisible) {
+                isRecoveryMode = true
+            }
+        }
+    }
+
+    if (session == null || isRecoveryMode) {
+        if (isForgotPasswordVisible || isRecoveryMode) {
+            ForgotPasswordScreen(
+                supabaseClient = supabaseClient,
+                onBack = { 
+                    isForgotPasswordVisible = false
+                    isRecoveryMode = false
+                },
+                isRecoveryMode = isRecoveryMode
+            )
+        } else {
+            LoginScreen(
+                supabaseClient = supabaseClient,
+                onForgotPassword = { isForgotPasswordVisible = true }
+            )
+        }
     } else {
+        // If we just logged in via a recovery link, we might want to force the Reset screen
+        // For simplicity, we can let the user manually go to profile or handle it via a flag
+        // Here we handle the post-login "Recovery" state if needed
         val userId = session.user?.id ?: ""
         
         val accessibilityRepo = remember { AccessibilityRepository(context) }
@@ -143,7 +164,6 @@ fun PathEaseApp() {
 @Preview(showBackground = true)
 @Composable
 fun PathEaseAppPreview() {
-    PathEaseAppTheme {
-        PathEaseApp()
-    }
+    // For preview, we still need a client, but we can't easily create one here.
+    // In a real app, you'd use a composition local or a mock.
 }

@@ -49,7 +49,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.tooling.preview.Preview
 import com.example.patheaseapp.data.local.AccessibilityPreferences
@@ -72,9 +71,6 @@ fun ProfileScreen(
     val isLoading by viewModel.isProfileLoading.collectAsState()
     val error by viewModel.profileError.collectAsState()
 
-    var showPasswordDialog by remember { mutableStateOf(false) }
-    var passwordUpdateResult by remember { mutableStateOf<String?>(null) }
-
     LaunchedEffect(userId) {
         viewModel.fetchProfile(userId)
     }
@@ -86,36 +82,8 @@ fun ProfileScreen(
         onUpdateProfile = { name, email, contact -> viewModel.updateProfile(userId, name, email, contact) },
         onLogout = { viewModel.logout() },
         onNavigateToSettings = onNavigateToSettings,
-        onChangePassword = { showPasswordDialog = true },
         modifier = modifier,
     )
-
-    if (showPasswordDialog) {
-        ChangePasswordDialog(
-            onDismiss = { showPasswordDialog = false },
-            onConfirm = { newPassword ->
-                viewModel.updatePassword(
-                    newPassword = newPassword,
-                    onSuccess = {
-                        showPasswordDialog = false
-                        passwordUpdateResult = "Password updated successfully!"
-                    },
-                    onError = { passwordUpdateResult = it }
-                )
-            }
-        )
-    }
-
-    if (passwordUpdateResult != null) {
-        androidx.compose.material3.AlertDialog(
-            onDismissRequest = { passwordUpdateResult = null },
-            confirmButton = {
-                TextButton(onClick = { passwordUpdateResult = null }) { Text("OK") }
-            },
-            title = { Text("Password Update") },
-            text = { Text(passwordUpdateResult!!) }
-        )
-    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -127,7 +95,6 @@ fun ProfileScreenContent(
     onUpdateProfile: (String, String, String) -> Unit,
     onLogout: () -> Unit,
     onNavigateToSettings: () -> Unit,
-    onChangePassword: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var isEditing by remember { mutableStateOf(false) }
@@ -135,7 +102,7 @@ fun ProfileScreenContent(
     // Use remember(profile) to sync inputs whenever the profile data updates from server
     var nameInput by remember(profile) { mutableStateOf(profile?.name ?: "") }
     var emailInput by remember(profile) { mutableStateOf(profile?.email ?: "") }
-    var emergencyContactInput by remember(profile) { mutableStateOf(profile?.emergencyContact ?: "") }
+    var emergencyContactInput by remember(profile) { mutableStateOf(profile?.emergencyContact ?: "999") }
 
     Scaffold(
         modifier = modifier,
@@ -181,27 +148,29 @@ fun ProfileScreenContent(
             if (isEditing) {
                 OutlinedTextField(
                     value = nameInput,
-                    onValueChange = { nameInput = it },
+                    onValueChange = { /* nameInput = it */ }, // User cannot edit
                     label = { Text("Name") },
+                    readOnly = true,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .semantics { contentDescription = "Edit name field" },
+                        .semantics { contentDescription = "Name field (read-only)" },
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
                     value = emailInput,
-                    onValueChange = { emailInput = it },
+                    onValueChange = { /* emailInput = it */ }, // User cannot edit
                     label = { Text("Email") },
+                    readOnly = true,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .semantics { contentDescription = "Edit email field" },
+                        .semantics { contentDescription = "Email field (read-only)" },
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
                     value = emergencyContactInput,
                     onValueChange = { emergencyContactInput = it },
-                    label = { Text("Phone Number") },
+                    label = { Text("emergency Number") },
                     modifier = Modifier
                         .fillMaxWidth()
                         .semantics { contentDescription = "Edit phone number field" },
@@ -221,15 +190,15 @@ fun ProfileScreenContent(
                     Text("Save Profile")
                 }
             } else {
-                Text(text = profile?.name ?: "Guest User", style = MaterialTheme.typography.headlineMedium)
-                Text(text = profile?.email ?: "No email set", style = MaterialTheme.typography.bodyMedium)
-                Text(text = profile?.emergencyContact ?: "No phone number set", style = MaterialTheme.typography.bodyMedium)
+                Text(text = profile?.name.takeIf { !it.isNullOrBlank() } ?: "Guest User", style = MaterialTheme.typography.headlineMedium)
+                Text(text = profile?.email.takeIf { !it.isNullOrBlank() } ?: "No email set", style = MaterialTheme.typography.bodyMedium)
+                Text(text = profile?.emergencyContact.takeIf { !it.isNullOrBlank() } ?: "999", style = MaterialTheme.typography.bodyMedium)
                 Spacer(modifier = Modifier.height(16.dp))
                 OutlinedButton(
                     onClick = {
                         nameInput = profile?.name ?: ""
                         emailInput = profile?.email ?: ""
-                        emergencyContactInput = profile?.emergencyContact ?: ""
+                        emergencyContactInput = profile?.emergencyContact.takeIf { !it.isNullOrBlank() } ?: "999"
                         isEditing = true
                     },
                     modifier = Modifier
@@ -237,13 +206,6 @@ fun ProfileScreenContent(
                         .semantics { contentDescription = "Edit profile details button" },
                 ) {
                     Text("Edit Profile")
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-                TextButton(
-                    onClick = onChangePassword,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Change Password")
                 }
             }
             Spacer(modifier = Modifier.weight(1f))
@@ -521,63 +483,6 @@ fun HistoryScreenContent(
     }
 }
 
-@Composable
-fun ChangePasswordDialog(
-    onDismiss: () -> Unit,
-    onConfirm: (String) -> Unit
-) {
-    var newPassword by remember { mutableStateOf("") }
-    var confirmPassword by remember { mutableStateOf("") }
-    var error by remember { mutableStateOf<String?>(null) }
-
-    androidx.compose.material3.AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Change Password") },
-        text = {
-            Column {
-                OutlinedTextField(
-                    value = newPassword,
-                    onValueChange = { newPassword = it; error = null },
-                    label = { Text("New Password") },
-                    visualTransformation = PasswordVisualTransformation(),
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = confirmPassword,
-                    onValueChange = { confirmPassword = it; error = null },
-                    label = { Text("Confirm New Password") },
-                    visualTransformation = PasswordVisualTransformation(),
-                    modifier = Modifier.fillMaxWidth()
-                )
-                error?.let {
-                    Text(text = it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                }
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    if (newPassword.length < 6) {
-                        error = "Password must be at least 6 characters"
-                    } else if (newPassword != confirmPassword) {
-                        error = "Passwords do not match"
-                    } else {
-                        onConfirm(newPassword)
-                    }
-                }
-            ) {
-                Text("Update")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        }
-    )
-}
-
 // --- PREVIEWS ---
 
 @Preview(showBackground = true)
@@ -650,8 +555,7 @@ fun ProfileScreenPreview() {
             error = null,
             onUpdateProfile = { _, _, _ -> },
             onLogout = {},
-            onNavigateToSettings = {},
-            onChangePassword = {}
+            onNavigateToSettings = {}
         )
     }
 }

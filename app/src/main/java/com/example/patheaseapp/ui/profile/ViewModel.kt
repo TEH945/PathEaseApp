@@ -9,6 +9,8 @@ import com.example.patheaseapp.data.remote.SupabaseStartedLocation
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.postgrest
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -42,6 +44,7 @@ class ProfileViewModel(
             _isProfileLoading.value = true
             _profileError.value = null
             try {
+                // Try to fetch existing profile
                 val profile = supabaseClient.postgrest["profiles"]
                     .select {
                         filter { eq("id", userId) }
@@ -49,7 +52,29 @@ class ProfileViewModel(
                     .decodeSingle<SupabaseProfile>()
                 _userProfile.value = profile
             } catch (e: Exception) {
-                _profileError.value = "Profile not found. Create one by editing."
+                // If not found, pre-fill with data from Auth session
+                val currentUser = supabaseClient.auth.currentUserOrNull()
+                if (currentUser != null) {
+                    // Try to get the name from various possible metadata keys
+                    val metadata = currentUser.userMetadata
+                    val authName = metadata?.get("name")?.jsonPrimitive?.contentOrNull
+                        ?: metadata?.get("full_name")?.jsonPrimitive?.contentOrNull
+                        ?: metadata?.get("display_name")?.jsonPrimitive?.contentOrNull
+                        ?: currentUser.email?.substringBefore("@") // Fallback to email username
+                        ?: "User"
+                    
+                    val authEmail = currentUser.email ?: ""
+                    
+                    val dummyProfile = SupabaseProfile(
+                        id = userId,
+                        name = authName,
+                        email = authEmail,
+                        emergencyContact = "999"
+                    )
+                    _userProfile.value = dummyProfile
+                } else {
+                    _profileError.value = "User session not found."
+                }
                 e.printStackTrace()
             } finally {
                 _isProfileLoading.value = false
@@ -90,22 +115,6 @@ class ProfileViewModel(
                 // If network sign out fails, force clear local state to allow login screen to show
                 _userProfile.value = null 
                 e.printStackTrace()
-            }
-        }
-    }
-
-    fun updatePassword(newPassword: String, onSuccess: () -> Unit, onError: (String) -> Unit) {
-        viewModelScope.launch {
-            _isProfileLoading.value = true
-            try {
-                supabaseClient.auth.updateUser {
-                    password = newPassword
-                }
-                onSuccess()
-            } catch (e: Exception) {
-                onError(e.message ?: "Failed to update password")
-            } finally {
-                _isProfileLoading.value = false
             }
         }
     }

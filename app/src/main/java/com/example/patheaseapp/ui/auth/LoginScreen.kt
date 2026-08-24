@@ -17,13 +17,17 @@ import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.providers.builtin.Email
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 
 @Suppress("unused")
 @Composable
 fun LoginScreen(
     supabaseClient: SupabaseClient,
+    onForgotPassword: () -> Unit
 ) {
     var email by remember { mutableStateOf("") }
+    var name by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
@@ -51,8 +55,18 @@ fun LoginScreen(
             style = MaterialTheme.typography.headlineMedium,
             color = MaterialTheme.colorScheme.primary
         )
-        
         Spacer(modifier = Modifier.height(32.dp))
+
+        if (isSignUp) {
+            OutlinedTextField(
+                value = name,
+                onValueChange = { name = it },
+                label = { Text("Name") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+        }
 
         OutlinedTextField(
             value = email,
@@ -87,25 +101,7 @@ fun LoginScreen(
         if (!isSignUp) {
             Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
                 TextButton(
-                    onClick = {
-                        scope.launch {
-                            if (email.isBlank()) {
-                                errorMessage = "Please enter your email first"
-                                return@launch
-                            }
-                            isLoading = true
-                            errorMessage = null
-                            successMessage = null
-                            try {
-                                supabaseClient.auth.resetPasswordForEmail(email.trim())
-                                successMessage = "Reset link sent to your email"
-                            } catch (e: Exception) {
-                                errorMessage = e.message ?: "Failed to send reset email"
-                            } finally {
-                                isLoading = false
-                            }
-                        }
-                    },
+                    onClick = onForgotPassword,
                     enabled = !isLoading
                 ) {
                     Text("Forgot Password?", style = MaterialTheme.typography.bodySmall)
@@ -138,6 +134,11 @@ fun LoginScreen(
                             supabaseClient.auth.signUpWith(Email) {
                                 this.email = trimmedEmail
                                 this.password = password
+                                // Store name in both "name" and "full_name" for compatibility
+                                data = buildJsonObject {
+                                    put("name", name.trim())
+                                    put("full_name", name.trim())
+                                }
                             }
                         } else {
                             supabaseClient.auth.signInWith(Email) {
@@ -146,14 +147,15 @@ fun LoginScreen(
                             }
                         }
                     } catch (e: Exception) {
-                        errorMessage = e.message ?: "Authentication failed"
+                        // Clean up the error message to remove technical details (URLs, Headers)
+                        errorMessage = e.message?.substringBefore("URL:")?.trim() ?: "Authentication failed"
                     } finally {
                         isLoading = false
                     }
                 }
             },
             modifier = Modifier.fillMaxWidth(),
-            enabled = !isLoading && email.isNotBlank() && password.isNotBlank()
+            enabled = !isLoading && email.isNotBlank() && password.isNotBlank() && (!isSignUp || name.isNotBlank())
         ) {
             if (isLoading) {
                 CircularProgressIndicator(
