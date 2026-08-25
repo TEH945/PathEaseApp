@@ -126,6 +126,7 @@ fun LoginScreen(
 
         Button(
             onClick = {
+                if (isLoading) return@Button // Extra safety check
                 scope.launch {
                     isLoading = true
                     errorMessage = null
