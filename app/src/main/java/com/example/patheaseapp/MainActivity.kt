@@ -61,7 +61,7 @@ class MainActivity : ComponentActivity() {
 
         // Initialize Google Places SDK with your project API key
         if (!Places.isInitialized()) {
-            Places.initialize(applicationContext, "AIzaSyDmDrGgqT7YR72KqEIGQml2sNQkJyKRdQU")
+            Places.initialize(applicationContext, "AIzaSyAnaGQ6_M6kAVKKrRPovxoccon0jyb4aik")
         }
 
         enableEdgeToEdge()
