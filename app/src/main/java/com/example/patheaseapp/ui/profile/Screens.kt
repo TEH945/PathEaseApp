@@ -410,13 +410,13 @@ fun StarredLocationsScreenContent(
         topBar = { TopAppBar(title = { Text("Starred Locations") }) },
     ) { padding ->
         LazyColumn(modifier = Modifier.padding(padding).fillMaxSize()) {
-            items(locations, key = { it.id }) { location ->
+            items(locations, key = { it.id ?: it.hashCode().toString() }) { location ->
                 ListItem(
                     headlineContent = { Text(location.name) },
                     supportingContent = { Text(location.address) },
                     trailingContent = {
                         IconButton(
-                            onClick = { onDeleteLocation(location.id) },
+                            onClick = { location.id?.let { onDeleteLocation(it) } },
                             modifier = Modifier.semantics { contentDescription = "Remove ${location.name} from starred locations" },
                         ) {
                             Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error)
@@ -435,9 +435,14 @@ fun StarredLocationsScreenContent(
 @Composable
 fun HistoryScreen(
     viewModel: ProfileViewModel,
+    userId: String,
     modifier: Modifier = Modifier,
 ) {
     val history by viewModel.routeHistory.collectAsState()
+
+    LaunchedEffect(userId) {
+        viewModel.fetchRouteHistory(userId)
+    }
 
     HistoryScreenContent(
         history = history,
@@ -470,7 +475,7 @@ fun HistoryScreenContent(
         },
     ) { padding ->
         LazyColumn(modifier = Modifier.padding(padding).fillMaxSize()) {
-            items(history, key = { it.id }) { item ->
+            items(history, key = { it.id ?: it.hashCode().toString() }) { item ->
                 ListItem(
                     headlineContent = { Text("${item.origin} ➔ ${item.destination}") },
                     supportingContent = { Text(item.timestamp) },
@@ -511,8 +516,8 @@ fun StarredLocationsScreenPreview() {
     PathEaseAppTheme {
         StarredLocationsScreenContent(
             locations = listOf(
-                SupabaseStartedLocation("1", "user1", "Home", "123 Main St"),
-                SupabaseStartedLocation("2", "user1", "Office", "456 Work Ave")
+                SupabaseStartedLocation("1", "user1", "Home", "123 Main St", 0.0, 0.0),
+                SupabaseStartedLocation("2", "user1", "Office", "456 Work Ave", 0.0, 0.0)
             ),
             onDeleteLocation = {}
         )
@@ -525,8 +530,8 @@ fun HistoryScreenPreview() {
     PathEaseAppTheme {
         HistoryScreenContent(
             history = listOf(
-                RouteHistoryItem("1", "Home", "Office", "2023-10-01 08:00"),
-                RouteHistoryItem("2", "Office", "Home", "2023-10-01 17:00")
+                RouteHistoryItem("1", "user1", "Home", "Office", "2023-10-01 08:00"),
+                RouteHistoryItem("2", "user1", "Office", "Home", "2023-10-01 17:00")
             ),
             onClearHistory = {}
         )

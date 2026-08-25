@@ -132,11 +132,14 @@ fun PathEaseApp(
         ) { innerPadding ->
             when (currentTab) {
                 Screen.Map -> HomeScreen(
-                    viewModel = homeViewModel,
+                    homeViewModel = homeViewModel,
+                    profileViewModel = profileViewModel,
+                    userId = userId,
                     modifier = Modifier.padding(innerPadding),
                 )
                 Screen.History -> HistoryScreen(
                     viewModel = profileViewModel,
+                    userId = userId,
                     modifier = Modifier.padding(innerPadding)
                 )
                 Screen.Starred -> StarredLocationsScreen(

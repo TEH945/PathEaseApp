@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import com.example.patheaseapp.util.toUserFriendlyMessage
+import android.util.Log
 
 class ProfileViewModel(
     private val supabaseClient: SupabaseClient,
@@ -136,6 +137,31 @@ class ProfileViewModel(
         }
     }
 
+    fun addStarredLocation(userId: String, name: String, address: String, lat: Double, lng: Double) {
+        viewModelScope.launch {
+            try {
+                Log.d("ProfileViewModel", "Adding starred location: $name for user: $userId")
+                if (userId.isBlank()) {
+                    _profileError.value = "User not logged in."
+                    return@launch
+                }
+                val newLocation = SupabaseStartedLocation(
+                    userId = userId,
+                    name = name,
+                    address = address,
+                    latitude = lat,
+                    longitude = lng
+                )
+                supabaseClient.postgrest["starred_locations"].insert(newLocation)
+                Log.d("ProfileViewModel", "Successfully added starred location")
+                fetchStarredLocations(userId)
+            } catch (e: Exception) {
+                Log.e("ProfileViewModel", "Error adding starred location: ${e.message}", e)
+                _profileError.value = "Failed to save: ${e.message}"
+            }
+        }
+    }
+
     fun deleteStarredLocation(userId: String, locationId: String) {
         viewModelScope.launch {
             try {
@@ -150,6 +176,38 @@ class ProfileViewModel(
     }
 
     // Route History Functions
+    fun fetchRouteHistory(userId: String) {
+        viewModelScope.launch {
+            try {
+                val history = supabaseClient.postgrest["route_history"]
+                    .select {
+                        filter { eq("user_id", userId) }
+                    }
+                    .decodeList<RouteHistoryItem>()
+                _routeHistory.value = history
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    fun addRouteHistoryItem(userId: String, origin: String, destination: String) {
+        viewModelScope.launch {
+            try {
+                val newItem = RouteHistoryItem(
+                    userId = userId,
+                    origin = origin,
+                    destination = destination,
+                    timestamp = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault()).format(java.util.Date())
+                )
+                supabaseClient.postgrest["route_history"].insert(newItem)
+                fetchRouteHistory(userId)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
     fun clearHistory() {
         _routeHistory.value = emptyList()
     }

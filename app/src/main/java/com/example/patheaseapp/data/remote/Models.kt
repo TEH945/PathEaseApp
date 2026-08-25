@@ -14,15 +14,18 @@ data class SupabaseProfile(
 
 @Serializable
 data class SupabaseStartedLocation(
-    val id: String,
+    val id: String? = null,
     @SerialName("user_id") val userId: String,
     val name: String,
     val address: String,
+    val latitude: Double,
+    val longitude: Double,
 )
 
 @Serializable
 data class RouteHistoryItem(
-    val id: String,
+    val id: String? = null,
+    @SerialName("user_id") val userId: String,
     val origin: String,
     val destination: String,
     val timestamp: String,

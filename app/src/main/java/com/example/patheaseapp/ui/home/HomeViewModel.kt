@@ -7,6 +7,14 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
+import com.google.android.gms.maps.model.LatLng
+
+data class SelectedPlace(
+    val name: String,
+    val address: String,
+    val latLng: LatLng
+)
+
 data class RouteInstruction(
     val title: String,
     val distance: String,
@@ -20,6 +28,7 @@ data class HomeUiState(
     val isNavigating: Boolean = false,
     val currentLocationName: String = "Current Location",
     val destinationName: String = "",
+    val selectedPlace: SelectedPlace? = null,
     val activeInstruction: RouteInstruction? = null,
     val speechError: String? = null
 )
@@ -54,6 +63,10 @@ class HomeViewModel : ViewModel() {
 
     fun onSearchQueryChanged(newQuery: String) {
         _uiState.value = _uiState.value.copy(searchQuery = newQuery)
+    }
+
+    fun selectPlace(place: SelectedPlace?) {
+        _uiState.value = _uiState.value.copy(selectedPlace = place)
     }
 
     fun startVoiceInput() {
