@@ -45,6 +45,9 @@ fun Exception.toUserFriendlyMessage(): String {
                 errorBody.contains("bad_jwt", ignoreCase = true) || errorBody.contains("missing sub claim", ignoreCase = true) ->
                     "Your session has expired. Please open the link from your email again."
 
+                errorBody.contains("unexpected_failure", ignoreCase = true) || errorBody.contains("email_provider_disabled", ignoreCase = true) ->
+                    "Registration is currently unavailable. Please try again later."
+
                 // General API Errors
                 else -> "Something went wrong on our end. Please try again later."
             }
