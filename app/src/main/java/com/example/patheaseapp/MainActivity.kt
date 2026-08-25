@@ -1,7 +1,7 @@
 package com.example.patheaseapp
 
-import android.os.Bundle
 import android.content.Intent
+import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -12,17 +12,18 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import com.example.patheaseapp.data.local.AccessibilityRepository
 import com.example.patheaseapp.ui.theme.PathEaseAppTheme
+import com.google.android.libraries.places.api.Places
 import io.github.jan.supabase.annotations.SupabaseInternal
-import io.github.jan.supabase.createSupabaseClient
-import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.parseFragmentAndImportSession
+import io.github.jan.supabase.createSupabaseClient
+import io.github.jan.supabase.postgrest.Postgrest
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
-    
+
     // Define Supabase client at activity level to handle deep links
     @OptIn(SupabaseInternal::class)
     private val supabaseClient by lazy {
@@ -45,7 +46,7 @@ class MainActivity : ComponentActivity() {
     @OptIn(SupabaseInternal::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
+
         // Handle deep link when app is created
         intent?.data?.let { uri ->
             lifecycleScope.launch {
@@ -57,7 +58,12 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-        
+
+        // Initialize Google Places SDK with your project API key
+        if (!Places.isInitialized()) {
+            Places.initialize(applicationContext, "AIzaSyDmDrGgqT7YR72KqEIGQml2sNQkJyKRdQU")
+        }
+
         enableEdgeToEdge()
         setContent {
             PathEaseAppTheme {
