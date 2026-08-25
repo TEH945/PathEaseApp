@@ -27,6 +27,8 @@ import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
 import kotlinx.coroutines.launch
+import com.google.android.libraries.places.widget.AutocompleteActivity
+import android.util.Log
 
 @Composable
 fun HomeScreen(
@@ -80,10 +82,21 @@ fun MapSearchBar(
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
-        if (result.resultCode == Activity.RESULT_OK && result.data != null) {
-            val place = Autocomplete.getPlaceFromIntent(result.data!!)
-            place.latLng?.let { latLng ->
-                onPlaceSelected(latLng)
+        when (result.resultCode) {
+            Activity.RESULT_OK -> {
+                result.data?.let { data ->
+                    val place = Autocomplete.getPlaceFromIntent(data)
+                    place.latLng?.let { latLng -> onPlaceSelected(latLng) }
+                }
+            }
+            AutocompleteActivity.RESULT_ERROR -> {
+                result.data?.let { data ->
+                    val status = Autocomplete.getStatusFromIntent(data)
+                    Log.e("MapSearchBar", "Places error: ${status.statusMessage}")
+                }
+            }
+            Activity.RESULT_CANCELED -> {
+                Log.d("MapSearchBar", "User canceled search")
             }
         }
     }
