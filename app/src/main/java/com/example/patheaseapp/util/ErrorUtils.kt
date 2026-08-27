@@ -21,25 +21,25 @@ fun Exception.toUserFriendlyMessage(): String {
             val errorBody = this.message ?: ""
             when {
                 // Auth Errors
-                errorBody.contains("invalid_credentials", ignoreCase = true) -> 
+                errorBody.contains("invalid_credentials", ignoreCase = true) ->
                     "Incorrect email or password. Please try again."
-                
-                errorBody.contains("user_not_found", ignoreCase = true) -> 
+
+                errorBody.contains("user_not_found", ignoreCase = true) ->
                     "We couldn't find an account with that email address."
-                
-                errorBody.contains("email_not_confirmed", ignoreCase = true) -> 
+
+                errorBody.contains("email_not_confirmed", ignoreCase = true) ->
                     "Please check your inbox and verify your email address to continue."
-                
-                errorBody.contains("weak_password", ignoreCase = true) -> 
+
+                errorBody.contains("weak_password", ignoreCase = true) ->
                     "That password is too easy to guess. Please use a stronger one."
-                
-                errorBody.contains("over_email_send_rate_limit", ignoreCase = true) -> 
+
+                errorBody.contains("over_email_send_rate_limit", ignoreCase = true) ->
                     "You've requested too many links. Please wait a few minutes before trying again."
-                
-                errorBody.contains("user_already_exists", ignoreCase = true) -> 
+
+                errorBody.contains("user_already_exists", ignoreCase = true) ->
                     "An account with this email already exists. Try signing in instead."
-                
-                errorBody.contains("invalid_grant", ignoreCase = true) -> 
+
+                errorBody.contains("invalid_grant", ignoreCase = true) ->
                     "This link is invalid or has expired. Please request a new one."
 
                 errorBody.contains("bad_jwt", ignoreCase = true) || errorBody.contains("missing sub claim", ignoreCase = true) ->

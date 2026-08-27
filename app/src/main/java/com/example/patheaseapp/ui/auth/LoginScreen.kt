@@ -39,7 +39,10 @@ fun LoginScreen(
     // Clear messages when switching between Login and Sign Up
     LaunchedEffect(isSignUp) {
         errorMessage = null
-        successMessage = null
+        // Clear success message ONLY when moving TO the Sign Up screen
+        if (isSignUp) {
+            successMessage = null
+        }
     }
 
     val scope = rememberCoroutineScope()
@@ -142,6 +145,9 @@ fun LoginScreen(
                                     put("full_name", name.trim())
                                 }
                             }
+                            // After successful sign up, show message and jump to Sign In page
+                            successMessage = "Verification email sent! Please check your inbox."
+                            isSignUp = false
                         } else {
                             supabaseClient.auth.signInWith(Email) {
                                 this.email = trimmedEmail
@@ -164,7 +170,7 @@ fun LoginScreen(
                     color = MaterialTheme.colorScheme.onPrimary
                 )
             } else {
-                Text(if (isSignUp) "Sign Up" else "Sign In")
+                Text(if (isSignUp) "Confirm Email Address" else "Sign In")
             }
         }
 
