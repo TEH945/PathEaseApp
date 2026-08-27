@@ -170,9 +170,3 @@ fun PathEaseApp(
     }
 }
 
-@Preview(showBackground = true)
-@Composable
-fun PathEaseAppPreview() {
-    // For preview, we still need a client, but we can't easily create one here.
-    // In a real app, you'd use a composition local or a mock.
-}

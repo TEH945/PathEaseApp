@@ -239,6 +239,10 @@ class ProfileViewModel(
         }
     }
 
+    fun toggleBlindMode(enabled: Boolean) {
+        accessibilityRepo.updatePreferences { it.copy(blindModeEnabled = enabled) }
+    }
+
     fun toggleKeepScreenOn(enabled: Boolean) {
         accessibilityRepo.updatePreferences { it.copy(keepScreenOn = enabled) }
     }

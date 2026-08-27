@@ -286,6 +286,7 @@ fun AccessibilitySettingsScreen(
         onToggleVoiceGuidance = { viewModel.toggleVoiceGuidance(it) },
         onToggleWheelchairAccess = { viewModel.toggleWheelchairAccess(it) },
         onToggleStrollerMode = { viewModel.toggleStrollerMode(it) },
+        onToggleBlindMode = { viewModel.toggleBlindMode(it) },
         onBack = onBack,
         modifier = modifier,
     )
@@ -299,6 +300,7 @@ fun AccessibilitySettingsScreenContent(
     onToggleVoiceGuidance: (Boolean) -> Unit,
     onToggleWheelchairAccess: (Boolean) -> Unit,
     onToggleStrollerMode: (Boolean) -> Unit,
+    onToggleBlindMode: (Boolean) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -333,6 +335,13 @@ fun AccessibilitySettingsScreenContent(
                 description = "Turn-by-turn spoken prompts during navigation",
                 checked = settings.voiceGuidanceEnabled,
                 onCheckedChange = onToggleVoiceGuidance,
+            )
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+            AccessibilityToggleRow(
+                title = "Blind Mode",
+                description = "Optimized interface and specific audio cues for blind users",
+                checked = settings.blindModeEnabled,
+                onCheckedChange = onToggleBlindMode,
             )
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             AccessibilityToggleRow(
@@ -505,6 +514,7 @@ fun AccessibilitySettingsScreenPreview() {
             onToggleVoiceGuidance = {},
             onToggleWheelchairAccess = {},
             onToggleStrollerMode = {},
+            onToggleBlindMode = {},
             onBack = {}
         )
     }
