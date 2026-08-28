@@ -170,7 +170,7 @@ fun LoginScreen(
                     color = MaterialTheme.colorScheme.onPrimary
                 )
             } else {
-                Text(if (isSignUp) "Confirm Email Address" else "Sign In")
+                Text(if (isSignUp) "Create account" else "Sign In")
             }
         }
 
