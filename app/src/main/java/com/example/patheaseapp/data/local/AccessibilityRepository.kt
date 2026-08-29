@@ -23,7 +23,7 @@ class AccessibilityRepository(context: Context) {
     private val _accessibilityState = MutableStateFlow(loadPreferences())
     val accessibilityState: StateFlow<AccessibilityPreferences> = _accessibilityState.asStateFlow()
 
-    private fun loadPreferences():AccessibilityPreferences {
+    private fun loadPreferences(): AccessibilityPreferences {
         return AccessibilityPreferences(
             visualAssistanceMode = prefs.getBoolean("visual_assistance", false),
             voiceGuidanceEnabled = prefs.getBoolean("voice_guidance", true),
@@ -34,7 +34,7 @@ class AccessibilityRepository(context: Context) {
         )
     }
 
-    fun updatePreferences(transform:(AccessibilityPreferences)->AccessibilityPreferences){
+    fun updatePreferences(transform: (AccessibilityPreferences) -> AccessibilityPreferences) {
         val updated = transform(_accessibilityState.value)
         _accessibilityState.value = updated
 
@@ -43,11 +43,8 @@ class AccessibilityRepository(context: Context) {
             putBoolean("voice_guidance", updated.voiceGuidanceEnabled)
             putBoolean("wheelchair_mode", updated.wheelchairAccessEnabled)
             putBoolean("stroller_mode", updated.strollerModeEnabled)
-            putBoolean("Blind_Mode", updated.blindModeEnabled)
+            putBoolean("Blind_mode", updated.blindModeEnabled)
             putBoolean("keep_screen_on", updated.keepScreenOn)
         }
-
     }
-
-
 }

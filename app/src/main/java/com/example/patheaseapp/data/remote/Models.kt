@@ -3,7 +3,6 @@ package com.example.patheaseapp.data.remote
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-
 @Serializable
 data class SupabaseProfile(
     val id: String,

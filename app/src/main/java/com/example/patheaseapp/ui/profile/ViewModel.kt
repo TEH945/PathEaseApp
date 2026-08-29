@@ -1,5 +1,6 @@
 package com.example.patheaseapp.ui.profile
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.patheaseapp.data.local.AccessibilityRepository
@@ -9,14 +10,12 @@ import com.example.patheaseapp.data.remote.SupabaseStartedLocation
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.postgrest
-import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import com.example.patheaseapp.util.toUserFriendlyMessage
-import android.util.Log
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonPrimitive
 
 class ProfileViewModel(
     private val supabaseClient: SupabaseClient,
@@ -28,7 +27,7 @@ class ProfileViewModel(
     private val _userProfile = MutableStateFlow<SupabaseProfile?>(null)
     val userProfile: StateFlow<SupabaseProfile?> = _userProfile.asStateFlow()
 
-    private val _isProfileLoading = MutableStateFlow(false)
+    private val _isProfileLoading = MutableStateFlow(value = false)
     val isProfileLoading: StateFlow<Boolean> = _isProfileLoading.asStateFlow()
 
     private val _profileError = MutableStateFlow<String?>(null)
@@ -71,7 +70,7 @@ class ProfileViewModel(
                         id = userId,
                         name = authName,
                         email = authEmail,
-                        emergencyContact = "999"
+                        emergencyContact = "999",
                     )
                     _userProfile.value = dummyProfile
                 } else {
@@ -98,7 +97,7 @@ class ProfileViewModel(
                 supabaseClient.postgrest["profiles"].upsert(updated)
                 _userProfile.value = updated
             } catch (e: Exception) {
-                _profileError.value = e.toUserFriendlyMessage()
+                _profileError.value = e.message ?: "An unexpected error occurred"
                 e.printStackTrace()
             } finally {
                 _isProfileLoading.value = false
@@ -150,7 +149,7 @@ class ProfileViewModel(
                     name = name,
                     address = address,
                     latitude = lat,
-                    longitude = lng
+                    longitude = lng,
                 )
                 supabaseClient.postgrest["starred_locations"].insert(newLocation)
                 Log.d("ProfileViewModel", "Successfully added starred location")

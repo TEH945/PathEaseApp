@@ -6,20 +6,19 @@ import com.example.patheaseapp.utils.SpeechRecognizerManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-
 import com.google.android.gms.maps.model.LatLng
 
 data class SelectedPlace(
     val name: String,
     val address: String,
-    val latLng: LatLng
+    val latLng: LatLng,
 )
 
 data class RouteInstruction(
     val title: String,
     val distance: String,
     val isHazardAhead: Boolean = false,
-    val hazardMessage: String = ""
+    val hazardMessage: String = "",
 )
 
 data class HomeUiState(
@@ -30,7 +29,7 @@ data class HomeUiState(
     val destinationName: String = "",
     val selectedPlace: SelectedPlace? = null,
     val activeInstruction: RouteInstruction? = null,
-    val speechError: String? = null
+    val speechError: String? = null,
 )
 
 class HomeViewModel : ViewModel() {
@@ -44,20 +43,19 @@ class HomeViewModel : ViewModel() {
         if (speechRecognizerManager == null) {
             speechRecognizerManager = SpeechRecognizerManager(
                 context = context,
-                onResult = { recognizedText ->
+                resultCallback = { recognizedText ->
                     _uiState.value = _uiState.value.copy(
                         searchQuery = recognizedText,
-                        isListening = false
+                        isListening = false,
                     )
                     startNavigationTo(recognizedText)
                 },
-                onError = { error ->
-                    _uiState.value = _uiState.value.copy(
-                        isListening = false,
-                        speechError = error
-                    )
-                }
-            )
+            ) { error ->
+                _uiState.value = _uiState.value.copy(
+                    isListening = false,
+                    speechError = error
+                )
+            }
         }
     }
 
@@ -89,7 +87,7 @@ class HomeViewModel : ViewModel() {
                 title = "Head North towards $destination",
                 distance = "150m",
                 isHazardAhead = true,
-                hazardMessage = "Bumpy Road surface ahead (20m)"
+                hazardMessage = "Bumpy Road surface ahead (20m)",
             )
         )
     }
@@ -99,12 +97,11 @@ class HomeViewModel : ViewModel() {
             isNavigating = false,
             destinationName = "",
             searchQuery = "",
-            activeInstruction = null
+            activeInstruction = null,
         )
     }
 
     override fun onCleared() {
-        super.onCleared()
         speechRecognizerManager?.destroy()
     }
 }

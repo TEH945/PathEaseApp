@@ -18,8 +18,6 @@ import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.AccessibilityNew
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
@@ -49,8 +47,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import com.example.patheaseapp.data.local.AccessibilityPreferences
 import com.example.patheaseapp.data.remote.RouteHistoryItem
 import com.example.patheaseapp.data.remote.SupabaseProfile
@@ -58,7 +56,6 @@ import com.example.patheaseapp.data.remote.SupabaseStartedLocation
 import com.example.patheaseapp.ui.theme.PathEaseAppTheme
 
 // --- 1. PROFILE SCREEN ---
-@Suppress("unused")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
@@ -97,18 +94,18 @@ fun ProfileScreenContent(
     onNavigateToSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var isEditing by remember { mutableStateOf(false) }
+    var isEditing by remember { mutableStateOf(value = false) }
     
     // Use remember(profile) to sync inputs whenever the profile data updates from server
-    var nameInput by remember(profile) { mutableStateOf(profile?.name ?: "") }
-    var emailInput by remember(profile) { mutableStateOf(profile?.email ?: "") }
-    var emergencyContactInput by remember(profile) { mutableStateOf(profile?.emergencyContact ?: "999") }
+    var nameInput by remember(profile) { mutableStateOf(value = profile?.name ?: "") }
+    var emailInput by remember(profile) { mutableStateOf(value = profile?.email ?: "") }
+    var emergencyContactInput by remember(profile) { mutableStateOf(value = profile?.emergencyContact ?: "999") }
 
     Scaffold(
         modifier = modifier,
         topBar = {
             TopAppBar(
-                title = { Text("User Profile") },
+                title = { Text(text = "User Profile") },
                 actions = {
                     IconButton(
                         onClick = onNavigateToSettings,
@@ -123,60 +120,60 @@ fun ProfileScreenContent(
         Column(
             modifier = Modifier
                 .padding(padding)
-                .padding(16.dp)
+                .padding(all = 16.dp)
                 .fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Icon(
                 Icons.Default.AccountCircle,
                 contentDescription = "Profile Picture",
-                modifier = Modifier.size(100.dp),
+                modifier = Modifier.size(size = 100.dp),
                 tint = MaterialTheme.colorScheme.primary,
             )
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(height = 16.dp))
 
             if (isLoading) {
                 CircularProgressIndicator()
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(height = 16.dp))
             }
 
             error?.let {
                 Text(text = it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(height = 8.dp))
             }
 
             if (isEditing) {
                 OutlinedTextField(
                     value = nameInput,
                     onValueChange = { /* nameInput = it */ }, // User cannot edit
-                    label = { Text("Name") },
+                    label = { Text(text = "Name") },
                     readOnly = true,
                     modifier = Modifier
                         .fillMaxWidth()
                         .semantics { contentDescription = "Name field (read-only)" },
                 )
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(height = 8.dp))
                 OutlinedTextField(
                     value = emailInput,
                     onValueChange = { /* emailInput = it */ }, // User cannot edit
-                    label = { Text("Email") },
+                    label = { Text(text = "Email") },
                     readOnly = true,
                     modifier = Modifier
                         .fillMaxWidth()
                         .semantics { contentDescription = "Email field (read-only)" },
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(height = 8.dp))
                 OutlinedTextField(
                     value = emergencyContactInput,
                     onValueChange = { emergencyContactInput = it },
-                    label = { Text("emergency Number") },
+                    label = { Text(text = "emergency Number") },
                     modifier = Modifier
                         .fillMaxWidth()
                         .semantics { contentDescription = "Edit phone number field" },
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(height = 16.dp))
                 Button(
                     onClick = {
                         onUpdateProfile(nameInput, emailInput, emergencyContactInput)
@@ -187,13 +184,13 @@ fun ProfileScreenContent(
                         .fillMaxWidth()
                         .semantics { contentDescription = "Save profile changes button" },
                 ) {
-                    Text("Save Profile")
+                    Text(text = "Save Profile")
                 }
             } else {
                 Text(text = profile?.name.takeIf { !it.isNullOrBlank() } ?: "Guest User", style = MaterialTheme.typography.headlineMedium)
                 Text(text = profile?.email.takeIf { !it.isNullOrBlank() } ?: "No email set", style = MaterialTheme.typography.bodyMedium)
                 Text(text = profile?.emergencyContact.takeIf { !it.isNullOrBlank() } ?: "999", style = MaterialTheme.typography.bodyMedium)
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(height = 16.dp))
                 OutlinedButton(
                     onClick = {
                         nameInput = profile?.name ?: ""
@@ -205,10 +202,10 @@ fun ProfileScreenContent(
                         .fillMaxWidth()
                         .semantics { contentDescription = "Edit profile details button" },
                 ) {
-                    Text("Edit Profile")
+                    Text(text = "Edit Profile")
                 }
             }
-            Spacer(modifier = Modifier.weight(1f))
+            Spacer(modifier = Modifier.weight(weight = 1f))
 
             Button(
                 onClick = onLogout,
@@ -218,34 +215,32 @@ fun ProfileScreenContent(
                     .semantics { contentDescription = "Log out account button" },
             ) {
                 Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Log Out")
+                Spacer(modifier = Modifier.width(width = 8.dp))
+                @Suppress("PARAMETER_NAME_CHANGED_ON_OVERRIDE")
+                Text(text = "Log Out")
             }
         }
     }
 }
 
 // --- 2. SETTINGS SCREEN ---
-@Suppress("unused")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     viewModel: ProfileViewModel,
     onNavigateToAccessibility: () -> Unit,
-    onNavigateToStarred: () -> Unit,
-    onNavigateToHistory: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val settings by viewModel.accessibilitySettings.collectAsState()
 
     Scaffold(
         modifier = modifier,
-        topBar = { TopAppBar(title = { Text("Settings") }) },
+        topBar = { TopAppBar(title = { Text(text = "Settings") }) },
     ) { padding ->
         Column(modifier = Modifier.padding(padding).fillMaxSize()) {
             ListItem(
-                headlineContent = { Text("Accessibility Settings") },
-                supportingContent = { Text("Visual mode, voice guidance, wheelchair, stroller options") },
+                headlineContent = { Text(text = "Accessibility Settings") },
+                supportingContent = { Text(text = "Visual mode, voice guidance, wheelchair, stroller options") },
                 leadingContent = { Icon(Icons.Default.AccessibilityNew, contentDescription = null) },
                 modifier = Modifier
                     .clickable { onNavigateToAccessibility() }
@@ -255,23 +250,21 @@ fun SettingsScreen(
             
             // "Don't lock the screen" toggle moved here
             ListItem(
-                headlineContent = { Text("Don't lock the screen") },
-                supportingContent = { Text("Keep the display active while the app is open") },
+                headlineContent = { Text(text = "Don't lock the screen") },
+                supportingContent = { Text(text = "Keep the display active while the app is open") },
                 trailingContent = {
                     Switch(
                         checked = settings.keepScreenOn,
-                        onCheckedChange = { viewModel.toggleKeepScreenOn(it) }
+                        onCheckedChange = { viewModel.toggleKeepScreenOn(it) },
                     )
                 },
-                modifier = Modifier.semantics { contentDescription = "Toggle screen lock prevention" }
+                modifier = Modifier.semantics { contentDescription = "Toggle screen lock prevention" },
             )
         }
     }
 }
 
 // --- 3. ACCESSIBILITY SETTINGS SCREEN ---
-@Suppress("unused")
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AccessibilitySettingsScreen(
     viewModel: ProfileViewModel,
@@ -308,7 +301,7 @@ fun AccessibilitySettingsScreenContent(
         modifier = modifier,
         topBar = {
             TopAppBar(
-                title = { Text("Accessibility Preferences") },
+                title = { Text(text = "Accessibility Preferences") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -320,7 +313,7 @@ fun AccessibilitySettingsScreenContent(
         Column(
             modifier = Modifier
                 .padding(padding)
-                .padding(16.dp)
+                .padding(all = 16.dp)
                 .fillMaxSize(),
         ) {
             AccessibilityToggleRow(
@@ -378,7 +371,7 @@ fun AccessibilityToggleRow(
             },
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(modifier = Modifier.weight(1f)) {
+        Column(modifier = Modifier.weight(weight = 1f)) {
             Text(text = title, style = MaterialTheme.typography.titleMedium)
             Text(text = description, style = MaterialTheme.typography.bodySmall)
         }
@@ -387,8 +380,6 @@ fun AccessibilityToggleRow(
 }
 
 // --- 4. STARRED LOCATIONS SCREEN ---
-@Suppress("unused")
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StarredLocationsScreen(
     viewModel: ProfileViewModel,
@@ -403,7 +394,7 @@ fun StarredLocationsScreen(
     StarredLocationsScreenContent(
         locations = locations,
         onDeleteLocation = { locationId -> viewModel.deleteStarredLocation(currentUserId, locationId) },
-        modifier = modifier
+        modifier = modifier,
     )
 }
 
@@ -416,13 +407,13 @@ fun StarredLocationsScreenContent(
 ) {
     Scaffold(
         modifier = modifier,
-        topBar = { TopAppBar(title = { Text("Starred Locations") }) },
+        topBar = { TopAppBar(title = { Text(text = "Starred Locations") }) },
     ) { padding ->
         LazyColumn(modifier = Modifier.padding(padding).fillMaxSize()) {
-            items(locations, key = { it.id ?: it.hashCode().toString() }) { location ->
+            items(items = locations, key = { it.id ?: it.hashCode().toString() }) { location ->
                 ListItem(
-                    headlineContent = { Text(location.name) },
-                    supportingContent = { Text(location.address) },
+                    headlineContent = { Text(text = location.name) },
+                    supportingContent = { Text(text = location.address) },
                     trailingContent = {
                         IconButton(
                             onClick = { location.id?.let { onDeleteLocation(it) } },
@@ -439,8 +430,6 @@ fun StarredLocationsScreenContent(
 }
 
 // --- 5. HISTORY SCREEN ---
-@Suppress("unused")
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistoryScreen(
     viewModel: ProfileViewModel,
@@ -456,7 +445,7 @@ fun HistoryScreen(
     HistoryScreenContent(
         history = history,
         onClearHistory = { viewModel.clearHistory() },
-        modifier = modifier
+        modifier = modifier,
     )
 }
 
@@ -471,23 +460,24 @@ fun HistoryScreenContent(
         modifier = modifier,
         topBar = {
             TopAppBar(
-                title = { Text("Route History") },
+                title = { Text(text = "Route History") },
                 actions = {
                     TextButton(
                         onClick = onClearHistory,
                         modifier = Modifier.semantics { contentDescription = "Clear all route history button" },
                     ) {
-                        Text("Clear All")
+                        @Suppress("PARAMETER_NAME_CHANGED_ON_OVERRIDE")
+                        Text(text = "Clear All")
                     }
                 },
             )
         },
     ) { padding ->
         LazyColumn(modifier = Modifier.padding(padding).fillMaxSize()) {
-            items(history, key = { it.id ?: it.hashCode().toString() }) { item ->
+            items(items = history, key = { it.id ?: it.hashCode().toString() }) { item ->
                 ListItem(
-                    headlineContent = { Text("${item.origin} ➔ ${item.destination}") },
-                    supportingContent = { Text(item.timestamp) },
+                    headlineContent = { Text(text = "${item.origin} ➔ ${item.destination}") },
+                    supportingContent = { Text(text = item.timestamp) },
                     leadingContent = { Icon(Icons.Default.Place, contentDescription = null) },
                 )
                 HorizontalDivider()
@@ -515,7 +505,7 @@ fun AccessibilitySettingsScreenPreview() {
             onToggleWheelchairAccess = {},
             onToggleStrollerMode = {},
             onToggleBlindMode = {},
-            onBack = {}
+            onBack = {},
         )
     }
 }
@@ -526,10 +516,10 @@ fun StarredLocationsScreenPreview() {
     PathEaseAppTheme {
         StarredLocationsScreenContent(
             locations = listOf(
-                SupabaseStartedLocation("1", "user1", "Home", "123 Main St", 0.0, 0.0),
-                SupabaseStartedLocation("2", "user1", "Office", "456 Work Ave", 0.0, 0.0)
+                SupabaseStartedLocation(id = "1", userId = "user1", name = "Home", address = "123 Main St", latitude = 0.0, longitude = 0.0),
+                SupabaseStartedLocation(id = "2", userId = "user1", name = "Office", address = "456 Work Ave", latitude = 0.0, longitude = 0.0),
             ),
-            onDeleteLocation = {}
+            onDeleteLocation = {},
         )
     }
 }
@@ -540,10 +530,10 @@ fun HistoryScreenPreview() {
     PathEaseAppTheme {
         HistoryScreenContent(
             history = listOf(
-                RouteHistoryItem("1", "user1", "Home", "Office", "2023-10-01 08:00"),
-                RouteHistoryItem("2", "user1", "Office", "Home", "2023-10-01 17:00")
+                RouteHistoryItem(id = "1", userId = "user1", origin = "Home", destination = "Office", timestamp = "2023-10-01 08:00"),
+                RouteHistoryItem(id = "2", userId = "user1", origin = "Office", destination = "Home", timestamp = "2023-10-01 17:00"),
             ),
-            onClearHistory = {}
+            onClearHistory = {},
         )
     }
 }
@@ -557,13 +547,13 @@ fun ProfileScreenPreview() {
                 id = "123",
                 name = "John Doe",
                 email = "john@example.com",
-                emergencyContact = "012-3456789"
+                emergencyContact = "012-3456789",
             ),
             isLoading = false,
             error = null,
             onUpdateProfile = { _, _, _ -> },
             onLogout = {},
-            onNavigateToSettings = {}
+            onNavigateToSettings = {},
         )
     }
 }
