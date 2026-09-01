@@ -129,7 +129,7 @@ fun ForgotPasswordScreen(
                     if (isLoading) {
                         CircularProgressIndicator(modifier = Modifier.size(size = 24.dp))
                     } else {
-                        Text(text = "Send Reset Link")
+                        Text(text = "Change password")
                     }
                 }
             } else {
