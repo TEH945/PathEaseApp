@@ -28,4 +28,6 @@ data class RouteHistoryItem(
     val origin: String,
     val destination: String,
     val timestamp: String,
+    @SerialName("dest_lat") val destinationLatitude: Double? = null,
+    @SerialName("dest_lng") val destinationLongitude: Double? = null,
 )

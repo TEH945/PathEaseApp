@@ -384,6 +384,7 @@ fun AccessibilityToggleRow(
 fun StarredLocationsScreen(
     viewModel: ProfileViewModel,
     currentUserId: String,
+    onLocationSelected: (SupabaseStartedLocation) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val locations by viewModel.starredLocations.collectAsState()
@@ -394,6 +395,7 @@ fun StarredLocationsScreen(
     StarredLocationsScreenContent(
         locations = locations,
         onDeleteLocation = { locationId -> viewModel.deleteStarredLocation(currentUserId, locationId) },
+        onLocationClick = onLocationSelected,
         modifier = modifier,
     )
 }
@@ -403,6 +405,7 @@ fun StarredLocationsScreen(
 fun StarredLocationsScreenContent(
     locations: List<SupabaseStartedLocation>,
     onDeleteLocation: (String) -> Unit,
+    onLocationClick: (SupabaseStartedLocation) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Scaffold(
@@ -414,6 +417,7 @@ fun StarredLocationsScreenContent(
                 ListItem(
                     headlineContent = { Text(text = location.name) },
                     supportingContent = { Text(text = location.address) },
+                    modifier = Modifier.clickable { onLocationClick(location) },
                     trailingContent = {
                         IconButton(
                             onClick = { location.id?.let { onDeleteLocation(it) } },
@@ -434,6 +438,7 @@ fun StarredLocationsScreenContent(
 fun HistoryScreen(
     viewModel: ProfileViewModel,
     userId: String,
+    onHistorySelected: (RouteHistoryItem) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val history by viewModel.routeHistory.collectAsState()
@@ -445,6 +450,7 @@ fun HistoryScreen(
     HistoryScreenContent(
         history = history,
         onClearHistory = { viewModel.clearHistory() },
+        onItemClick = onHistorySelected,
         modifier = modifier,
     )
 }
@@ -454,6 +460,7 @@ fun HistoryScreen(
 fun HistoryScreenContent(
     history: List<RouteHistoryItem>,
     onClearHistory: () -> Unit,
+    onItemClick: (RouteHistoryItem) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Scaffold(
@@ -479,6 +486,7 @@ fun HistoryScreenContent(
                     headlineContent = { Text(text = "${item.origin} ➔ ${item.destination}") },
                     supportingContent = { Text(text = item.timestamp) },
                     leadingContent = { Icon(Icons.Default.Place, contentDescription = null) },
+                    modifier = Modifier.clickable { onItemClick(item) }
                 )
                 HorizontalDivider()
             }
@@ -520,6 +528,7 @@ fun StarredLocationsScreenPreview() {
                 SupabaseStartedLocation(id = "2", userId = "user1", name = "Office", address = "456 Work Ave", latitude = 0.0, longitude = 0.0),
             ),
             onDeleteLocation = {},
+            onLocationClick = {},
         )
     }
 }
@@ -534,6 +543,7 @@ fun HistoryScreenPreview() {
                 RouteHistoryItem(id = "2", userId = "user1", origin = "Office", destination = "Home", timestamp = "2023-10-01 17:00"),
             ),
             onClearHistory = {},
+            onItemClick = {},
         )
     }
 }

@@ -14,6 +14,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import com.google.android.gms.maps.model.LatLng
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.patheaseapp.data.local.AccessibilityRepository
 import com.example.patheaseapp.ui.auth.ForgotPasswordScreen
@@ -84,6 +85,10 @@ fun PathEaseApp(
     } else {
         val userId = session.user?.id ?: ""
         var currentTab by remember { mutableStateOf<AppScreen>(AppScreen.Map) }
+        var selectedLocation by remember { mutableStateOf<LatLng?>(null) }
+        var selectedName by remember { mutableStateOf<String?>(null) }
+        var selectedAddress by remember { mutableStateOf<String?>(null) }
+
         val homeViewModel: HomeViewModel = viewModel<HomeViewModel>()
         
         val profileViewModel: ProfileViewModel = viewModel(
@@ -110,7 +115,13 @@ fun PathEaseApp(
                             icon = { Icon(screen.icon, contentDescription = null) },
                             label = { Text(text = screen.title) },
                             selected = currentTab == screen,
-                            onClick = { currentTab = screen },
+                            onClick = { 
+                                currentTab = screen
+                                if (screen != AppScreen.Map) {
+                                    // Reset selected location when leaving map? 
+                                    // Or maybe keep it so we can go back.
+                                }
+                            },
                             modifier = Modifier.semantics {
                                 contentDescription = "Navigate to ${screen.title} screen"
                             },
@@ -124,16 +135,44 @@ fun PathEaseApp(
                     homeViewModel = homeViewModel,
                     profileViewModel = profileViewModel,
                     userId = userId,
+                    initialLocation = selectedLocation,
+                    initialName = selectedName,
+                    initialAddress = selectedAddress,
+                    onLocationReset = {
+                        selectedLocation = null
+                        selectedName = null
+                        selectedAddress = null
+                    },
                     modifier = Modifier.padding(innerPadding),
                 )
                 AppScreen.History -> HistoryScreen(
                     viewModel = profileViewModel,
                     userId = userId,
+                    onHistorySelected = { historyItem ->
+                        if (historyItem.destinationLatitude != null && historyItem.destinationLongitude != null) {
+                            selectedLocation = LatLng(
+                                historyItem.destinationLatitude,
+                                historyItem.destinationLongitude
+                            )
+                            selectedName = historyItem.destination
+                            selectedAddress = "From History" // Address not saved in history
+                            currentTab = AppScreen.Map
+                        } else {
+                            // Fallback if no coordinates
+                            currentTab = AppScreen.Map
+                        }
+                    },
                     modifier = Modifier.padding(innerPadding),
                 )
                 AppScreen.Starred -> StarredLocationsScreen(
                     viewModel = profileViewModel,
                     currentUserId = userId,
+                    onLocationSelected = { location ->
+                        selectedLocation = LatLng(location.latitude, location.longitude)
+                        selectedName = location.name
+                        selectedAddress = location.address
+                        currentTab = AppScreen.Map
+                    },
                     modifier = Modifier.padding(innerPadding),
                 )
                 AppScreen.Settings -> SettingsScreen(
