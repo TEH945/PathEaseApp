@@ -74,6 +74,17 @@ import kotlin.math.cos
 import kotlin.math.pow
 import kotlin.math.sin
 import kotlin.math.sqrt
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.FloatingActionButton
+import androidx.core.net.toUri
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.patheaseapp.Hazard.HazardViewModel
+import com.example.patheaseapp.Hazard.WarningBanner
+import com.example.patheaseapp.Hazard.ReportHazardScreen
+import com.example.patheaseapp.Hazard.vibrate
+import com.example.patheaseapp.Hazard.speakWarning
+import com.example.patheaseapp.ui.home.StillnessCheckDialog
+import android.content.Intent
 
 private enum class SafetyLevel {
     SAFE, CAUTION, DANGER
@@ -314,6 +325,7 @@ fun HomeScreen(
     @Suppress("unused") homeViewModel: HomeViewModel,
     profileViewModel: ProfileViewModel,
     userId: String,
+    hazardViewModel: HazardViewModel = viewModel(),
     modifier: Modifier = Modifier,
 ) {
     val kualaLumpur = LatLng(3.1390, 101.6869)
@@ -322,6 +334,30 @@ fun HomeScreen(
     }
     val coroutineScope = rememberCoroutineScope()
     val starredLocations by profileViewModel.starredLocations.collectAsStateWithLifecycle()
+    // NEW: hazard state
+    val nearbyWarning by hazardViewModel.nearbyWarning.collectAsStateWithLifecycle()
+    val isStillTooLong by hazardViewModel.isStillTooLong.collectAsStateWithLifecycle()
+    val sosTriggered by hazardViewModel.sosTriggered.collectAsStateWithLifecycle()
+    val emergencyContact by hazardViewModel.emergencyContact.collectAsStateWithLifecycle()
+    var showReportHazard by remember { mutableStateOf(false) }
+    val hazardContext = LocalContext.current
+
+    LaunchedEffect(nearbyWarning) {
+        nearbyWarning?.let { hazard ->
+            vibrate(hazardContext)
+            speakWarning(hazardContext, "${hazard.type} ahead, ${hazard.distanceMeters.toInt()} meters")
+        }
+    }
+
+    LaunchedEffect(sosTriggered) {
+        if (sosTriggered) {
+            val intent = Intent(Intent.ACTION_DIAL).apply {
+                data = "tel:$emergencyContact".toUri()
+            }
+            hazardContext.startActivity(intent)
+            hazardViewModel.onSosHandled()
+        }
+    }
 
     LaunchedEffect(userId) {
         profileViewModel.fetchStarredLocations(userId)
@@ -347,7 +383,7 @@ fun HomeScreen(
 
     StartLocationUpdates { lat: Double, lng: Double ->
         val latLng = LatLng(lat, lng)
-        userLocation = latLng
+        hazardViewModel.onLocationUpdate(lat, lng)
 
         if (!hasCenteredOnUser) {
             hasCenteredOnUser = true
