@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.status.SessionStatus
+import com.example.patheaseapp.util.toUserFriendlyMessage
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
@@ -116,7 +117,7 @@ fun ForgotPasswordScreen(
                                 )
                                 successMessage = "Reset link sent! Please check your email inbox."
                             } catch (e: Exception) {
-                                errorMessage = e.message ?: "An unexpected error occurred"
+                                errorMessage = e.toUserFriendlyMessage()
                             } finally {
                                 isLoading = false
                             }
@@ -192,7 +193,7 @@ fun ForgotPasswordScreen(
                                 delay(2000.milliseconds)
                                 onSuccess()
                             } catch (e: Exception) {
-                                errorMessage = e.message ?: "An unexpected error occurred"
+                                errorMessage = e.toUserFriendlyMessage()
                             } finally {
                                 isLoading = false
                             }
