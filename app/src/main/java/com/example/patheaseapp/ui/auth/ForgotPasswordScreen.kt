@@ -1,8 +1,9 @@
 package com.example.patheaseapp.ui.auth
 
-import android.util.Log
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -23,6 +24,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -62,6 +64,13 @@ fun ForgotPasswordScreen(
     val isSessionReady = sessionStatus is SessionStatus.Authenticated
     
     val scope = rememberCoroutineScope()
+    val scrollState = rememberScrollState()
+
+    // Clear messages when switching between modes
+    LaunchedEffect(isRecoveryMode) {
+        errorMessage = null
+        successMessage = null
+    }
 
     Scaffold(
         topBar = {
@@ -79,8 +88,9 @@ fun ForgotPasswordScreen(
             modifier = Modifier
                 .padding(padding)
                 .padding(horizontal = 28.dp)
-                .fillMaxSize(),
-            horizontalAlignment = Alignment.Start, // 左对齐标题，符合现代专业 App 风格
+                .fillMaxSize()
+                .verticalScroll(scrollState),
+            horizontalAlignment = Alignment.Start, 
         ) {
             Text(
                 text = if (isRecoveryMode) "Set New Password" else "Forgot Password",
@@ -121,13 +131,11 @@ fun ForgotPasswordScreen(
                             try {
                                 supabaseClient.auth.resetPasswordForEmail(
                                     email = email.trim(),
-                                    redirectUrl = "patheaseapp://reset-password",
+                                    redirectUrl = "patheaseapp://reset-password/",
                                 )
                                 successMessage = "A reset link has been sent to your email."
                             } catch (e: Exception) {
-                                // 临时修改：显示原始错误，以便找出具体原因
-                                errorMessage = e.message ?: "Unknown error"
-                                Log.e("ForgotPassword", "Error requesting link", e)
+                                errorMessage = e.toUserFriendlyMessage()
                             } finally {
                                 isLoading = false
                             }
@@ -183,7 +191,7 @@ fun ForgotPasswordScreen(
                     onClick = {
                         scope.launch {
                             if (!isSessionReady) {
-                                errorMessage = "Session is still loading. Please wait a moment."
+                                errorMessage = "Session is not ready. Please try opening the link again."
                                 return@launch
                             }
                             if (newPassword.length < 6) {
@@ -196,9 +204,10 @@ fun ForgotPasswordScreen(
                             }
                             isLoading = true
                             errorMessage = null
+                            successMessage = null
                             try {
                                 supabaseClient.auth.updateUser { password = newPassword }
-                                successMessage = "Password successfully updated!"
+                                successMessage = "Success! Your password has been updated."
                                 delay(1500.milliseconds)
                                 onSuccess()
                             } catch (e: Exception) {
@@ -210,14 +219,15 @@ fun ForgotPasswordScreen(
                     },
                     modifier = Modifier.fillMaxWidth().height(56.dp),
                     shape = MaterialTheme.shapes.medium,
-                    enabled = !isLoading
+                    enabled = !isLoading && newPassword.isNotBlank() && confirmPassword.isNotBlank()
                 ) {
                     if (isLoading) {
-                        CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                    } else if (!isSessionReady) {
-                        Text("Waiting for session...", style = MaterialTheme.typography.titleMedium)
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
                     } else {
-                        Text("Update Password", style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            text = if (isSessionReady) "Update Password" else "Verifying session...",
+                            style = MaterialTheme.typography.titleMedium
+                        )
                     }
                 }
             }

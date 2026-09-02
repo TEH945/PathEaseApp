@@ -40,8 +40,11 @@ fun Throwable.toUserFriendlyMessage(): String {
                 errorBody.contains("user_already_exists", ignoreCase = true) ->
                     "An account with this email already exists. Try signing in instead."
 
-                errorBody.contains("invalid_grant", ignoreCase = true) ->
+                errorBody.contains("invalid_grant", ignoreCase = true) || errorBody.contains("pkce", ignoreCase = true) ->
                     "This link is invalid or has expired. Please request a new one."
+
+                errorBody.contains("refresh_token_not_found", ignoreCase = true) ->
+                    "Your recovery session has expired. Please request a new reset link."
 
                 errorBody.contains("bad_jwt", ignoreCase = true) || errorBody.contains("missing sub claim", ignoreCase = true) ->
                     "Your session has expired. Please sign in again."
