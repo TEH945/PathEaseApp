@@ -75,7 +75,6 @@ import kotlin.math.pow
 import kotlin.math.sin
 import kotlin.math.sqrt
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.FloatingActionButton
 import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.patheaseapp.Hazard.HazardViewModel
@@ -83,8 +82,8 @@ import com.example.patheaseapp.Hazard.WarningBanner
 import com.example.patheaseapp.Hazard.ReportHazardScreen
 import com.example.patheaseapp.Hazard.vibrate
 import com.example.patheaseapp.Hazard.speakWarning
-import com.example.patheaseapp.ui.home.StillnessCheckDialog
 import android.content.Intent
+import androidx.compose.foundation.layout.Spacer
 
 private enum class SafetyLevel {
     SAFE, CAUTION, DANGER
@@ -322,6 +321,7 @@ private fun formatDuration(seconds: Long): String {
 
 @Composable
 fun HomeScreen(
+    modifier: Modifier = Modifier,
     @Suppress("unused") homeViewModel: HomeViewModel,
     profileViewModel: ProfileViewModel,
     userId: String,
@@ -330,7 +330,6 @@ fun HomeScreen(
     initialAddress: String? = null,
     onLocationReset: () -> Unit = {},
     hazardViewModel: HazardViewModel = viewModel(),
-    modifier: Modifier = Modifier,
 ) {
     val kualaLumpur = LatLng(3.1390, 101.6869)
     val cameraPositionState = rememberCameraPositionState {
@@ -392,6 +391,16 @@ fun HomeScreen(
         }
     }
 
+    if (showReportHazard) {
+        ReportHazardScreen(
+            onSubmit = { type, lat, lng ->
+                hazardViewModel.reportHazard(type, lat, lng, photoUri = null)
+                showReportHazard = false
+            },
+            onCancel = { showReportHazard = false }
+        )
+        return
+    }
     val isStarred = remember(searchedPlace, starredLocations) {
         starredLocations.any {
             (it.latitude == searchedPlace?.latitude) && (it.longitude == searchedPlace?.longitude)
@@ -400,6 +409,7 @@ fun HomeScreen(
 
     StartLocationUpdates { lat: Double, lng: Double ->
         val latLng = LatLng(lat, lng)
+        userLocation = latLng
         hazardViewModel.onLocationUpdate(lat, lng)
 
         if (!hasCenteredOnUser) {
@@ -437,7 +447,7 @@ fun HomeScreen(
             modifier = Modifier.fillMaxSize(),
             cameraPositionState = cameraPositionState,
             properties = MapProperties(isMyLocationEnabled = userLocation != null),
-            uiSettings = MapUiSettings(myLocationButtonEnabled = false),
+            uiSettings = MapUiSettings(myLocationButtonEnabled = false, zoomControlsEnabled = false),
         ) {
             searchedPlace?.let { place ->
                 Marker(
@@ -487,6 +497,53 @@ fun HomeScreen(
                 imageVector = Icons.Default.MyLocation,
                 contentDescription = "Recenter map",
             )
+        }
+
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(16.dp),
+        ) {
+            FloatingActionButton(
+                onClick = {
+                    coroutineScope.launch {
+                        cameraPositionState.animate(CameraUpdateFactory.zoomIn())
+                    }
+                },
+                modifier = Modifier.size(48.dp),
+                containerColor = Color.White,
+                contentColor = MaterialTheme.colorScheme.primary,
+                shape = CircleShape,
+            ) {
+                Text("+", style = MaterialTheme.typography.titleLarge)
+            }
+            Spacer(modifier = Modifier.padding(4.dp))
+            FloatingActionButton(
+                onClick = {
+                    coroutineScope.launch {
+                        cameraPositionState.animate(CameraUpdateFactory.zoomOut())
+                    }
+                },
+                modifier = Modifier.size(48.dp),
+                containerColor = Color.White,
+                contentColor = MaterialTheme.colorScheme.primary,
+                shape = CircleShape,
+            ) {
+                Text("−", style = MaterialTheme.typography.titleLarge)
+            }
+        }
+        FloatingActionButton(
+            onClick = { showReportHazard = true },
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(16.dp),
+        ) {
+            Icon(Icons.Default.Warning, contentDescription = "Report a hazard")
+        }
+        nearbyWarning?.let {
+            Box(modifier = Modifier.align(Alignment.TopCenter).padding(top = 90.dp)) {
+                WarningBanner(it)
+            }
         }
 
         if ((searchedPlace != null) && !routeStarted) {
@@ -673,6 +730,12 @@ fun HomeScreen(
                 }
             }
         }
+    }
+    if (isStillTooLong) {
+        StillnessCheckDialog(
+            onSafe = { hazardViewModel.dismissStillnessCheck() },
+            onSOS = { hazardViewModel.triggerSOS() }
+        )
     }
 }
 
