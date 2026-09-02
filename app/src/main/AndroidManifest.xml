@@ -47,6 +47,9 @@
                 <data
                     android:host="auth-callback"
                     android:scheme="patheaseapp" />
+                <data
+                    android:host="reset-password"
+                    android:scheme="patheaseapp" />
             </intent-filter>
         </activity>
 

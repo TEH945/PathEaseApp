@@ -190,14 +190,16 @@ class ProfileViewModel(
         }
     }
 
-    fun addRouteHistoryItem(userId: String, origin: String, destination: String) {
+    fun addRouteHistoryItem(userId: String, origin: String, destination: String, destLat: Double? = null, destLng: Double? = null) {
         viewModelScope.launch {
             try {
                 val newItem = RouteHistoryItem(
                     userId = userId,
                     origin = origin,
                     destination = destination,
-                    timestamp = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault()).format(java.util.Date())
+                    timestamp = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault()).format(java.util.Date()),
+                    destinationLatitude = destLat,
+                    destinationLongitude = destLng
                 )
                 supabaseClient.postgrest["route_history"].insert(newItem)
                 fetchRouteHistory(userId)

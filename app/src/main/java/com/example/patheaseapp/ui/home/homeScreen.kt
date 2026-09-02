@@ -325,6 +325,10 @@ fun HomeScreen(
     @Suppress("unused") homeViewModel: HomeViewModel,
     profileViewModel: ProfileViewModel,
     userId: String,
+    initialLocation: LatLng? = null,
+    initialName: String? = null,
+    initialAddress: String? = null,
+    onLocationReset: () -> Unit = {},
     hazardViewModel: HazardViewModel = viewModel(),
     modifier: Modifier = Modifier,
 ) {
@@ -374,6 +378,19 @@ fun HomeScreen(
     var routeLoading by remember { mutableStateOf(value = false) }
     var routeError by remember { mutableStateOf<String?>(value = null) }
     var currentInstruction by remember { mutableStateOf(value = "Follow the pedestrian route") }
+
+    LaunchedEffect(initialLocation) {
+        if (initialLocation != null) {
+            searchedPlace = initialLocation
+            searchedPlaceName = initialName
+            searchedPlaceAddress = initialAddress
+            walkingRoute = null
+            routeStarted = false
+            routeError = null
+            cameraPositionState.animate(CameraUpdateFactory.newLatLngZoom(initialLocation, 17f))
+            onLocationReset()
+        }
+    }
 
     val isStarred = remember(searchedPlace, starredLocations) {
         starredLocations.any {
@@ -564,6 +581,8 @@ fun HomeScreen(
                                         userId = userId,
                                         origin = "Current Location",
                                         destination = searchedPlaceName ?: "Destination",
+                                        destLat = searchedPlace?.latitude,
+                                        destLng = searchedPlace?.longitude
                                     )
 
                                     val route = getWalkingRoute(origin, destination, apiKey)
