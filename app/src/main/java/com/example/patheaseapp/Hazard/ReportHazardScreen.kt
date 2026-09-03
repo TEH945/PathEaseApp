@@ -9,11 +9,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.google.android.gms.maps.model.LatLng
 
 // Screen for submitting a new hazard report: pick a type, attach a photo, submit.
 @Composable
 fun ReportHazardScreen(
-    onSubmit: (type: String, lat: Double, lng: Double) -> Unit,
+    currentLocation: LatLng?,
+    onSubmit: (type: String, lat: Double, lng: Double, photo: Bitmap?) -> Unit,
     onCancel: () -> Unit,
 ) {
     var selectedType by remember { mutableStateOf("Bumpy Road") }
@@ -60,7 +62,13 @@ fun ReportHazardScreen(
         }
 
         Spacer(modifier = Modifier.height(24.dp))
-
+        if (currentLocation == null) {
+            Text(
+                "Waiting for your location...",
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+        }
         Row {
             OutlinedButton(onClick = onCancel, modifier = Modifier.weight(1f)) {
                 Text("Cancel")
@@ -68,9 +76,11 @@ fun ReportHazardScreen(
             Spacer(modifier = Modifier.width(12.dp))
             Button(
                 onClick = {
-                    // TODO: replace with real GPS location once live location tracking is wired up
-                    onSubmit(selectedType, 1.4927, 103.7414)
+                    currentLocation?.let {
+                        onSubmit(selectedType, it.latitude, it.longitude, capturedPhoto)
+                    }
                 },
+                enabled = currentLocation != null, // disabled until GPS has a fix
                 modifier = Modifier.weight(1f)
             ) {
                 Text("Submit")

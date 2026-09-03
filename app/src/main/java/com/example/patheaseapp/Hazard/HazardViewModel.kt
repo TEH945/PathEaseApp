@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import java.util.UUID
+
 // Controller/ViewModel for the Hazard/Barrier & Safety feature — holds all state and business logic.
 class HazardViewModel(
     private val repository: HazardRepository = HazardRepository()
@@ -34,6 +34,25 @@ class HazardViewModel(
         }
     }
 
+    fun onBumpDetected(lat: Double, lng: Double) {
+        viewModelScope.launch {
+            repository.addHazard(
+                type = "Bumpy Road",
+                lat = lat,
+                lng = lng,
+                photoUrl = null,
+                reportedBy = "Auto-detected"
+            )
+            _hazards.value = repository.getHazards()
+        }
+    }
+    fun confirmHazardRemoved(hazard: Hazard) {
+        viewModelScope.launch {
+            repository.confirmRemoved(hazard.id, hazard.confirmedRemovedCount)
+            _hazards.value = repository.getHazards()
+        }
+    }
+
     fun onLocationUpdate(userLat: Double, userLng: Double) {
         viewModelScope.launch {
             val updated = _hazards.value.map { h ->
@@ -43,10 +62,21 @@ class HazardViewModel(
             _nearbyWarning.value = updated.firstOrNull { it.distanceMeters <= 50f }
         }
     }
-
-    fun reportHazard(type: String, lat: Double, lng: Double, photoUri: String?) {
+    fun reportHazard(type: String, lat: Double, lng: Double, photo: android.graphics.Bitmap?) {
         viewModelScope.launch {
-            repository.addHazard(Hazard(UUID.randomUUID().toString(), type, lat, lng))
+            val photoUrl = photo?.let { bitmap ->
+                val stream = java.io.ByteArrayOutputStream()
+                bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 80, stream)
+                repository.uploadPhoto(stream.toByteArray())
+            }
+            repository.addHazard(
+                type = type,
+                lat = lat,
+                lng = lng,
+                photoUrl = photoUrl,
+                reportedBy = "Anonymous" // no real auth on this Supabase project, fine for now
+            )
+            _hazards.value = repository.getHazards() // refresh list so the new report shows immediately
         }
     }
 

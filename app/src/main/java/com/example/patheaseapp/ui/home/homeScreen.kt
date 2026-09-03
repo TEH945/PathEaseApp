@@ -84,6 +84,7 @@ import com.example.patheaseapp.Hazard.vibrate
 import com.example.patheaseapp.Hazard.speakWarning
 import android.content.Intent
 import androidx.compose.foundation.layout.Spacer
+import com.example.patheaseapp.Hazard.DetectRoadBumps
 
 private enum class SafetyLevel {
     SAFE, CAUTION, DANGER
@@ -286,6 +287,19 @@ private suspend fun getWalkingRoute(
     }
 }
 
+private fun toHazardPoints(hazards: List<com.example.patheaseapp.Hazard.Hazard>): List<HazardPoint> {
+    return hazards.map { hazard ->
+        HazardPoint(
+            location = LatLng(hazard.lat, hazard.lng),
+            level = when (hazard.type) {
+                "Barrier" -> SafetyLevel.DANGER
+                "Bumpy Road" -> SafetyLevel.CAUTION
+                else -> SafetyLevel.CAUTION
+            },
+            radiusMeters = if (hazard.type == "Barrier") 40.0 else 50.0,
+        )
+    }
+}
 private fun getSafetyLevel(point: LatLng, hazards: List<HazardPoint>): SafetyLevel {
     var level = SafetyLevel.SAFE
     for (hazard in hazards) {
@@ -344,6 +358,9 @@ fun HomeScreen(
     val emergencyContact by hazardViewModel.emergencyContact.collectAsStateWithLifecycle()
     var showReportHazard by remember { mutableStateOf(false) }
     val hazardContext = LocalContext.current
+    val hazards by hazardViewModel.hazards.collectAsStateWithLifecycle()
+    var selectedHazard by remember { mutableStateOf<com.example.patheaseapp.Hazard.Hazard?>(null) }
+    val hazardMarkerIcon = remember { com.example.patheaseapp.Hazard.createHazardMarkerIcon(hazardContext) }
 
     LaunchedEffect(nearbyWarning) {
         nearbyWarning?.let { hazard ->
@@ -393,8 +410,9 @@ fun HomeScreen(
 
     if (showReportHazard) {
         ReportHazardScreen(
-            onSubmit = { type, lat, lng ->
-                hazardViewModel.reportHazard(type, lat, lng, photoUri = null)
+            currentLocation = userLocation,
+            onSubmit = { type, lat, lng, photo ->
+                hazardViewModel.reportHazard(type, lat, lng, photo)
                 showReportHazard = false
             },
             onCancel = { showReportHazard = false }
@@ -404,6 +422,12 @@ fun HomeScreen(
     val isStarred = remember(searchedPlace, starredLocations) {
         starredLocations.any {
             (it.latitude == searchedPlace?.latitude) && (it.longitude == searchedPlace?.longitude)
+        }
+    }
+    DetectRoadBumps{
+        userLocation?.let { loc ->
+            hazardViewModel.onBumpDetected(loc.latitude, loc.longitude)
+            vibrate(hazardContext) // immediate reactive feedback, separate from the 50m proactive warning
         }
     }
 
@@ -458,7 +482,18 @@ fun HomeScreen(
             }
 
             walkingRoute?.let { route ->
-                DrawSafetyRoute(points = route.points)
+                DrawSafetyRoute(points = route.points, hazards = toHazardPoints(hazards))
+            }
+            hazards.forEach { hazard ->
+                Marker(
+                    state = MarkerState(position = LatLng(hazard.lat, hazard.lng)),
+                    icon = hazardMarkerIcon,
+                    title = hazard.type,
+                    onClick = {
+                        selectedHazard = hazard
+                        true // we're showing our own dialog, not the default info window
+                    }
+                )
             }
         }
 
@@ -735,6 +770,16 @@ fun HomeScreen(
         StillnessCheckDialog(
             onSafe = { hazardViewModel.dismissStillnessCheck() },
             onSOS = { hazardViewModel.triggerSOS() }
+        )
+    }
+    selectedHazard?.let { hazard ->
+        com.example.patheaseapp.Hazard.HazardDetailDialog(
+            hazard = hazard,
+            onConfirmRemoved = {
+                hazardViewModel.confirmHazardRemoved(hazard)
+                selectedHazard = null
+            },
+            onDismiss = { selectedHazard = null }
         )
     }
 }
