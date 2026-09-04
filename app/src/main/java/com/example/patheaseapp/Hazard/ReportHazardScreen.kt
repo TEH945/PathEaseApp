@@ -1,6 +1,7 @@
 package com.example.patheaseapp.Hazard
 
 import android.graphics.Bitmap
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -10,6 +11,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.google.android.gms.maps.model.LatLng
+
+import androidx.compose.foundation.Image
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.shape.RoundedCornerShape
 
 // Screen for submitting a new hazard report: pick a type, attach a photo, submit.
 @Composable
@@ -34,56 +41,90 @@ fun ReportHazardScreen(
         return
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-            .verticalScroll(rememberScrollState()),
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background
     ) {
-        Text("Report a Hazard", style = MaterialTheme.typography.headlineSmall)
-        Spacer(modifier = Modifier.height(16.dp))
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .windowInsetsPadding(WindowInsets.safeDrawing)
+                .padding(16.dp)
+                .verticalScroll(rememberScrollState()),
+        ) {
+            Text("Report a Hazard", style = MaterialTheme.typography.headlineSmall)
+            Spacer(modifier = Modifier.height(16.dp))
 
-        Text("Hazard type")
-        hazardTypes.forEach { type ->
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                RadioButton(selected = selectedType == type, onClick = { selectedType = type })
-                Text(type)
+            Text("Hazard type", style = MaterialTheme.typography.titleMedium)
+            hazardTypes.forEach { type ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { selectedType = type }
+                        .padding(vertical = 4.dp)
+                ) {
+                    RadioButton(selected = selectedType == type, onClick = { selectedType = type })
+                    Text(type)
+                }
             }
-        }
 
-        Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-        Button(onClick = { showCamera = true }) {
-            Text(if (capturedPhoto == null) "Take Photo" else "Retake Photo")
-        }
-        if (capturedPhoto != null) {
-            Spacer(modifier = Modifier.height(8.dp))
-            Text("Photo attached ✓")
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-        if (currentLocation == null) {
-            Text(
-                "Waiting for your location...",
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-        }
-        Row {
-            OutlinedButton(onClick = onCancel, modifier = Modifier.weight(1f)) {
-                Text("Cancel")
+            if (capturedPhoto != null) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Image(
+                        bitmap = capturedPhoto!!.asImageBitmap(),
+                        contentDescription = "Captured photo",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedButton(
+                    onClick = { showCamera = true },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Retake Photo")
+                }
+            } else {
+                Button(
+                    onClick = { showCamera = true },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Take Photo")
+                }
             }
-            Spacer(modifier = Modifier.width(12.dp))
-            Button(
-                onClick = {
-                    currentLocation?.let {
-                        onSubmit(selectedType, it.latitude, it.longitude, capturedPhoto)
-                    }
-                },
-                enabled = currentLocation != null, // disabled until GPS has a fix
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("Submit")
+
+            Spacer(modifier = Modifier.height(24.dp))
+            if (currentLocation == null) {
+                Text(
+                    "Waiting for your location...",
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+            }
+            Row(modifier = Modifier.fillMaxWidth()) {
+                OutlinedButton(onClick = onCancel, modifier = Modifier.weight(1f)) {
+                    Text("Cancel")
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Button(
+                    onClick = {
+                        currentLocation?.let {
+                            onSubmit(selectedType, it.latitude, it.longitude, capturedPhoto)
+                        }
+                    },
+                    enabled = currentLocation != null,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("Submit")
+                }
             }
         }
     }

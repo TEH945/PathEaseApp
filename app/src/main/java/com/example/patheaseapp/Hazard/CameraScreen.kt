@@ -88,20 +88,48 @@ fun CameraScreen(
     Box(modifier = Modifier.fillMaxSize()) {
         when {
             capturedBitmap != null -> {
-                Column(
-                    modifier = Modifier.fillMaxSize().padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Image(
-                        bitmap = capturedBitmap!!.asImageBitmap(),
-                        contentDescription = "Captured hazard photo",
-                        modifier = Modifier.fillMaxWidth().weight(1f)
-                    )
-                    Row(modifier = Modifier.padding(top = 16.dp)) {
-                        Button(onClick = { onPhotoCaptured(capturedBitmap) }) { Text("Use Photo") }
-                        Spacer(modifier = Modifier.width(12.dp))
-                        OutlinedButton(onClick = { capturedBitmap = null }) { Text("Retake") }
+                Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .windowInsetsPadding(WindowInsets.safeDrawing)
+                            .padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Image(
+                            bitmap = capturedBitmap!!.asImageBitmap(),
+                            contentDescription = "Captured hazard photo",
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f)
+                        )
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 16.dp),
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Button(
+                                onClick = { onPhotoCaptured(capturedBitmap) },
+                                modifier = Modifier.weight(1f)
+                            ) { Text("Use Photo") }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            OutlinedButton(
+                                onClick = { capturedBitmap = null },
+                                modifier = Modifier.weight(1f),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
+                            ) { Text("Retake") }
+                        }
                     }
+
+                    // Cancel button at the top, same as in preview mode.
+                    TextButton(
+                        onClick = onCancel,
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .windowInsetsPadding(WindowInsets.safeDrawing)
+                            .padding(16.dp)
+                    ) { Text("Cancel", color = Color.White) }
                 }
             }
             hasPermission -> {
