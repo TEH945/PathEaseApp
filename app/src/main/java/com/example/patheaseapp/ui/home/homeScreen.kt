@@ -65,6 +65,7 @@ import com.example.patheaseapp.Hazard.WarningBanner
 import com.example.patheaseapp.Hazard.createHazardMarkerIcon
 import com.example.patheaseapp.Hazard.speakWarning
 import com.example.patheaseapp.Hazard.vibrate
+import com.example.patheaseapp.util.TtsManager
 import com.example.patheaseapp.R
 import com.example.patheaseapp.ui.profile.ProfileViewModel
 import com.google.android.gms.maps.CameraUpdateFactory
@@ -383,6 +384,7 @@ fun HomeScreen(
     modifier: Modifier = Modifier,
     @Suppress("unused") homeViewModel: HomeViewModel,
     profileViewModel: ProfileViewModel,
+    ttsManager: TtsManager,
     userId: String,
     initialLocation: LatLng? = null,
     initialName: String? = null,
@@ -398,6 +400,7 @@ fun HomeScreen(
     }
     val coroutineScope = rememberCoroutineScope()
     val starredLocations by profileViewModel.starredLocations.collectAsStateWithLifecycle()
+    val accessibilitySettings by profileViewModel.accessibilitySettings.collectAsStateWithLifecycle()
     val nearbyWarning by hazardViewModel.nearbyWarning.collectAsStateWithLifecycle()
     val isStillTooLong by hazardViewModel.isStillTooLong.collectAsStateWithLifecycle()
     val sosTriggered by hazardViewModel.sosTriggered.collectAsStateWithLifecycle()
@@ -415,7 +418,9 @@ fun HomeScreen(
     LaunchedEffect(nearbyWarning) {
         nearbyWarning?.let { hazard ->
             vibrate(hazardContext)
-            speakWarning(hazardContext, "${hazard.type} ahead, ${hazard.distanceMeters.toInt()} meters")
+            if (accessibilitySettings.blindModeEnabled) {
+                speakWarning(ttsManager, "${hazard.type} ahead, ${hazard.distanceMeters.toInt()} meters")
+            }
         }
     }
 
@@ -504,6 +509,12 @@ fun HomeScreen(
             }
             cameraPositionState.animate(CameraUpdateFactory.newLatLngZoom(initialLocation, 17f))
             onLocationReset()
+        }
+    }
+
+    LaunchedEffect(currentInstruction) {
+        if (routeStarted && accessibilitySettings.blindModeEnabled) {
+            ttsManager.speak(currentInstruction)
         }
     }
 
@@ -608,7 +619,11 @@ fun HomeScreen(
                 .align(Alignment.TopCenter)
                 .padding(top = 24.dp),
         ) {
-            MapSearchBar(userLocation = userLocation) { selectedLatLng, placeName, placeAddress ->
+            MapSearchBar(
+            userLocation = userLocation,
+            ttsManager = ttsManager,
+            blindModeEnabled = accessibilitySettings.blindModeEnabled
+        ) { selectedLatLng, placeName, placeAddress ->
                 searchedPlace = selectedLatLng
                 searchedPlaceName = placeName
                 searchedPlaceAddress = placeAddress
@@ -629,6 +644,9 @@ fun HomeScreen(
         FloatingActionButton(
             onClick = {
                 userLocation?.let { location ->
+                    if (accessibilitySettings.blindModeEnabled) {
+                        ttsManager.speak("Recentering map to your location")
+                    }
                     coroutineScope.launch {
                         cameraPositionState.animate(CameraUpdateFactory.newLatLngZoom(location, 17f))
                     }
@@ -682,7 +700,12 @@ fun HomeScreen(
             }
         }
         FloatingActionButton(
-            onClick = { showReportHazard = true },
+            onClick = {
+                if (accessibilitySettings.blindModeEnabled) {
+                    ttsManager.speak("Report a hazard")
+                }
+                showReportHazard = true
+            },
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(16.dp),
@@ -726,11 +749,17 @@ fun HomeScreen(
                             onClick = {
                                 searchedPlace?.let { latLng ->
                                     if (isStarred) {
+                                        if (accessibilitySettings.blindModeEnabled) {
+                                            ttsManager.speak("Removed from starred locations")
+                                        }
                                         val star = starredLocations.find {
                                             (it.latitude == latLng.latitude) && (it.longitude == latLng.longitude)
                                         }
                                         star?.id?.let { profileViewModel.deleteStarredLocation(userId, it) }
                                     } else {
+                                        if (accessibilitySettings.blindModeEnabled) {
+                                            ttsManager.speak("Added to starred locations")
+                                        }
                                         profileViewModel.addStarredLocation(
                                             userId = userId,
                                             name = searchedPlaceName ?: "Unnamed Location",
@@ -774,6 +803,9 @@ fun HomeScreen(
 
                     Button(
                         onClick = {
+                            if (accessibilitySettings.blindModeEnabled) {
+                                ttsManager.speak("Starting safe route to ${searchedPlaceName ?: "destination"}")
+                            }
                             startNavigation()
                         },
                         modifier = Modifier
@@ -907,6 +939,8 @@ fun SafetyIndicator(color: Color, text: String) {
 @Composable
 fun MapSearchBar(
     userLocation: LatLng?,
+    ttsManager: TtsManager,
+    blindModeEnabled: Boolean,
     onPlaceSelected: (LatLng, String?, String?) -> Unit,
 ) {
     val context = LocalContext.current
@@ -920,6 +954,9 @@ fun MapSearchBar(
         if (result.resultCode == Activity.RESULT_OK) {
             result.data?.let { data ->
                 val place = Autocomplete.getPlaceFromIntent(data)
+                if (blindModeEnabled) {
+                    ttsManager.speak("Destination set to ${place.name}")
+                }
                 place.latLng?.let { latLng -> onPlaceSelected(latLng, place.name, place.address) }
             }
         } else if (result.resultCode == AutocompleteActivity.RESULT_ERROR) {
@@ -943,8 +980,14 @@ fun MapSearchBar(
                 coroutineScope.launch {
                     val place = resolveSpokenTextToPlace(context, spokenText, userLocation)
                     if (place?.latLng != null) {
+                        if (blindModeEnabled) {
+                            ttsManager.speak("Destination set to ${place.name}")
+                        }
                         onPlaceSelected(place.latLng!!, place.name, place.address)
                     } else {
+                        if (blindModeEnabled) {
+                            ttsManager.speak("Couldn't find destination for $spokenText")
+                        }
                         Toast.makeText(
                             context,
                             "Couldn't find a place for \"$spokenText\"",
@@ -975,6 +1018,9 @@ fun MapSearchBar(
                 modifier = Modifier
                     .weight(1f)
                     .clickable {
+                        if (blindModeEnabled) {
+                            ttsManager.speak("Search for a destination")
+                        }
                         val intent = Autocomplete.IntentBuilder(AutocompleteActivityMode.OVERLAY, fields)
                             .build(context)
                         launcher.launch(intent)
@@ -991,6 +1037,9 @@ fun MapSearchBar(
             }
             IconButton(
                 onClick = {
+                    if (blindModeEnabled) {
+                        ttsManager.speak("Voice search")
+                    }
                     val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                         putExtra(
                             RecognizerIntent.EXTRA_LANGUAGE_MODEL,

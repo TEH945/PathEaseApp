@@ -55,6 +55,7 @@ import com.example.patheaseapp.data.local.AccessibilityPreferences
 import com.example.patheaseapp.data.remote.RouteHistoryItem
 import com.example.patheaseapp.data.remote.SupabaseProfile
 import com.example.patheaseapp.data.remote.SupabaseStartedLocation
+import com.example.patheaseapp.util.TtsManager
 import com.example.patheaseapp.ui.theme.PathEaseAppTheme
 
 // --- 1. PROFILE SCREEN ---
@@ -270,6 +271,7 @@ fun SettingsScreen(
 @Composable
 fun AccessibilitySettingsScreen(
     viewModel: ProfileViewModel,
+    ttsManager: TtsManager,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -279,7 +281,11 @@ fun AccessibilitySettingsScreen(
         settings = settings,
         onToggleWheelchairAccess = { viewModel.toggleWheelchairAccess(it) },
         onToggleStrollerMode = { viewModel.toggleStrollerMode(it) },
-        onToggleBlindMode = { viewModel.toggleBlindMode(it) },
+        onToggleBlindMode = { enabled ->
+            viewModel.toggleBlindMode(enabled)
+            val msg = if (enabled) "Blind mode enabled" else "Blind mode disabled"
+            ttsManager.speak(msg)
+        },
         onBack = onBack,
         modifier = modifier,
     )

@@ -6,8 +6,8 @@ import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
-import android.speech.tts.TextToSpeech
 import androidx.annotation.RequiresPermission
+import com.example.patheaseapp.util.TtsManager
 import java.util.Locale
 
 // Helper functions for hazard warning feedback: device vibration and text-to-speech alerts.
@@ -26,12 +26,6 @@ fun vibrate(context: Context) {
     vibrator.vibrate(effect)
 }
 
-fun speakWarning(context: Context, message: String) {
-    var tts: TextToSpeech? = null
-    tts = TextToSpeech(context) { status ->
-        if (status == TextToSpeech.SUCCESS) {
-            tts?.language = Locale.getDefault()
-            tts?.speak(message, TextToSpeech.QUEUE_FLUSH, null, null)
-        }
-    }
+fun speakWarning(ttsManager: TtsManager, message: String) {
+    ttsManager.speak(message)
 }

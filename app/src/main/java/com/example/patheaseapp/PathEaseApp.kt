@@ -22,6 +22,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.platform.LocalContext
 import com.example.patheaseapp.data.local.AccessibilityRepository
+import com.example.patheaseapp.util.TtsManager
 import com.example.patheaseapp.ui.auth.ForgotPasswordScreen
 import com.example.patheaseapp.ui.auth.LoginScreen
 import com.example.patheaseapp.ui.home.HomeScreen
@@ -49,6 +50,7 @@ sealed class AppScreen(@Suppress("unused") val route: String, val title: String,
 fun PathEaseApp(
     supabaseClient: SupabaseClient,
     accessibilityRepo: AccessibilityRepository,
+    ttsManager: TtsManager,
     initialForgotPasswordVisible: Boolean = false,
     onForgotPasswordVisibleChanged: (Boolean) -> Unit = {},
 ) {
@@ -96,6 +98,8 @@ fun PathEaseApp(
     )
 
     val context = LocalContext.current
+    val accessibilityState by accessibilityRepo.accessibilityState.collectAsState()
+    
     LaunchedEffect(profileViewModel, context) {
         profileViewModel.setContext(context)
     }
@@ -138,7 +142,12 @@ fun PathEaseApp(
                                 icon = { Icon(screen.icon, contentDescription = null) },
                                 label = { Text(text = screen.title) },
                                 selected = currentTab == screen,
-                                onClick = { currentTab = screen },
+                                onClick = {
+                                    if (accessibilityState.blindModeEnabled) {
+                                        ttsManager.speak(screen.title)
+                                    }
+                                    currentTab = screen
+                                },
                                 modifier = Modifier.semantics {
                                     contentDescription = "Navigate to ${screen.title} screen"
                                 },
@@ -154,6 +163,7 @@ fun PathEaseApp(
                 AppScreen.Map -> HomeScreen(
                     homeViewModel = homeViewModel,
                     profileViewModel = profileViewModel,
+                    ttsManager = ttsManager,
                     userId = userId,
                     initialLocation = selectedLocation,
                     initialName = selectedName,
@@ -172,6 +182,9 @@ fun PathEaseApp(
                     viewModel = profileViewModel,
                     userId = userId,
                     onHistorySelected = { historyItem ->
+                        if (accessibilityState.blindModeEnabled) {
+                            ttsManager.speak("Selected ${historyItem.destination} from history")
+                        }
                         if (historyItem.destinationLatitude != null && historyItem.destinationLongitude != null) {
                             selectedLocation = LatLng(
                                 historyItem.destinationLatitude,
@@ -189,6 +202,9 @@ fun PathEaseApp(
                     viewModel = profileViewModel,
                     currentUserId = userId,
                     onLocationSelected = { location ->
+                        if (accessibilityState.blindModeEnabled) {
+                            ttsManager.speak("Selected ${location.name} from starred locations")
+                        }
                         selectedLocation = LatLng(location.latitude, location.longitude)
                         selectedName = location.name
                         selectedAddress = location.address
@@ -203,6 +219,7 @@ fun PathEaseApp(
                 )
                 AppScreen.Accessibility -> AccessibilitySettingsScreen(
                     viewModel = profileViewModel,
+                    ttsManager = ttsManager,
                     onBack = { currentTab = AppScreen.Settings },
                     modifier = Modifier.padding(innerPadding),
                 )

@@ -17,6 +17,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import com.example.patheaseapp.data.local.AccessibilityRepository
+import com.example.patheaseapp.util.TtsManager
 import com.example.patheaseapp.ui.theme.PathEaseAppTheme
 import com.google.android.libraries.places.api.Places
 import io.github.jan.supabase.annotations.SupabaseInternal
@@ -33,6 +34,7 @@ import com.google.android.gms.maps.MapsInitializer
 class MainActivity : ComponentActivity() {
 
     private var isRecoveryFlow by mutableStateOf(false)
+    private var ttsManager: TtsManager? = null
 
     private val supabaseClient by lazy {
         @OptIn(SupabaseInternal::class)
@@ -67,6 +69,8 @@ class MainActivity : ComponentActivity() {
         handleDeepLink(intent)
 
         enableEdgeToEdge()
+        ttsManager = TtsManager(this)
+        
         setContent {
             PathEaseAppTheme {
                 val context = LocalContext.current
@@ -87,11 +91,17 @@ class MainActivity : ComponentActivity() {
                 PathEaseApp(
                     supabaseClient = supabaseClient,
                     accessibilityRepo = accessibilityRepo,
+                    ttsManager = ttsManager!!,
                     initialForgotPasswordVisible = isRecoveryFlow,
                     onForgotPasswordVisibleChanged = { isRecoveryFlow = it }
                 )
             }
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        ttsManager?.shutdown()
     }
 
     @OptIn(SupabaseInternal::class)
