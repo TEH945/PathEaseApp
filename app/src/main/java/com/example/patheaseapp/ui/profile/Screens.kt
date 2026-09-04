@@ -242,7 +242,7 @@ fun SettingsScreen(
         Column(modifier = Modifier.padding(padding).fillMaxSize()) {
             ListItem(
                 headlineContent = { Text(text = "Accessibility Settings") },
-                supportingContent = { Text(text = "Visual mode, voice guidance, wheelchair, stroller options") },
+                supportingContent = { Text(text = "Blind mode and other accessibility options") },
                 leadingContent = { Icon(Icons.Default.AccessibilityNew, contentDescription = null) },
                 modifier = Modifier
                     .clickable { onNavigateToAccessibility() }
@@ -277,8 +277,6 @@ fun AccessibilitySettingsScreen(
 
     AccessibilitySettingsScreenContent(
         settings = settings,
-        onToggleWheelchairAccess = { viewModel.toggleWheelchairAccess(it) },
-        onToggleStrollerMode = { viewModel.toggleStrollerMode(it) },
         onToggleBlindMode = { viewModel.toggleBlindMode(it) },
         onBack = onBack,
         modifier = modifier,
@@ -289,8 +287,6 @@ fun AccessibilitySettingsScreen(
 @Composable
 fun AccessibilitySettingsScreenContent(
     settings: AccessibilityPreferences,
-    onToggleWheelchairAccess: (Boolean) -> Unit,
-    onToggleStrollerMode: (Boolean) -> Unit,
     onToggleBlindMode: (Boolean) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
@@ -319,20 +315,6 @@ fun AccessibilitySettingsScreenContent(
                 description = "Optimized interface and specific audio cues for blind users",
                 checked = settings.blindModeEnabled,
                 onCheckedChange = onToggleBlindMode,
-            )
-            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-            AccessibilityToggleRow(
-                title = "Wheelchair Accessible Mode",
-                description = "Prioritizes routes with elevators and ramps",
-                checked = settings.wheelchairAccessEnabled,
-                onCheckedChange = onToggleWheelchairAccess,
-            )
-            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-            AccessibilityToggleRow(
-                title = "Stroller Friendly Mode",
-                description = "Avoids stairs and narrow pathways",
-                checked = settings.strollerModeEnabled,
-                onCheckedChange = onToggleStrollerMode,
             )
         }
     }
@@ -538,8 +520,6 @@ fun AccessibilitySettingsScreenPreview() {
     PathEaseAppTheme {
         AccessibilitySettingsScreenContent(
             settings = AccessibilityPreferences(),
-            onToggleWheelchairAccess = {},
-            onToggleStrollerMode = {},
             onToggleBlindMode = {},
             onBack = {},
         )
