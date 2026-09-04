@@ -349,7 +349,7 @@ fun HomeScreen(
     initialAddress: String? = null,
     initialRouteStarted: Boolean = false,
     onLocationReset: () -> Unit = {},
-    hazardViewModel: HazardViewModel = viewModel(),
+    hazardViewModel: HazardViewModel = viewModel(factory = HazardViewModel.Factory),
 ) {
     val kualaLumpur = LatLng(3.1390, 101.6869)
     val cameraPositionState = rememberCameraPositionState {

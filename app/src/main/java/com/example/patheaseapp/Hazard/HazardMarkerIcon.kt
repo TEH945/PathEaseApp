@@ -42,5 +42,9 @@ fun createHazardMarkerIcon(context: Context, sizeDp: Int = 40): BitmapDescriptor
     canvas.drawLine(cx - crossSize, cy, cx + crossSize, cy, crossPaint) // horizontal
     canvas.drawLine(cx, cy - crossSize, cx, cy + crossSize, crossPaint) // vertical
 
-    return BitmapDescriptorFactory.fromBitmap(bitmap)
+    return try {
+        BitmapDescriptorFactory.fromBitmap(bitmap)
+    } catch (e: Exception) {
+        BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED)
+    }
 }
