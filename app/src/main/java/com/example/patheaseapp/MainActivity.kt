@@ -28,6 +28,7 @@ import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
 import io.ktor.client.plugins.HttpTimeout
 import kotlinx.coroutines.launch
+import com.google.android.gms.maps.MapsInitializer
 
 class MainActivity : ComponentActivity() {
 
@@ -59,6 +60,7 @@ class MainActivity : ComponentActivity() {
         if (!Places.isInitialized()) {
             Places.initialize(applicationContext, "AIzaSyAnaGQ6_M6kAVKKrRPovxoccon0jyb4aik")
         }
+        MapsInitializer.initialize(applicationContext)
 
         enableEdgeToEdge()
         setContent {
