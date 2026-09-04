@@ -18,7 +18,11 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.shape.RoundedCornerShape
 
-// Screen for submitting a new hazard report: pick a type, attach a photo, submit.
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.*
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReportHazardScreen(
     currentLocation: LatLng?,
@@ -41,18 +45,49 @@ fun ReportHazardScreen(
         return
     }
 
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background
-    ) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Report a Hazard") },
+                navigationIcon = {
+                    IconButton(onClick = onCancel) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                }
+            )
+        },
+        bottomBar = {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
+                    .padding(16.dp)
+            ) {
+                OutlinedButton(onClick = onCancel, modifier = Modifier.weight(1f)) {
+                    Text("Cancel")
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Button(
+                    onClick = {
+                        currentLocation?.let {
+                            onSubmit(selectedType, it.latitude, it.longitude, capturedPhoto)
+                        }
+                    },
+                    enabled = currentLocation != null,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("Submit")
+                }
+            }
+        }
+    ) { innerPadding ->
         Column(
             modifier = Modifier
+                .padding(innerPadding)
                 .fillMaxSize()
-                .windowInsetsPadding(WindowInsets.safeDrawing)
-                .padding(16.dp)
+                .padding(horizontal = 16.dp)
                 .verticalScroll(rememberScrollState()),
         ) {
-            Text("Report a Hazard", style = MaterialTheme.typography.headlineSmall)
             Spacer(modifier = Modifier.height(16.dp))
 
             Text("Hazard type", style = MaterialTheme.typography.titleMedium)
@@ -108,23 +143,6 @@ fun ReportHazardScreen(
                     color = MaterialTheme.colorScheme.error,
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
-            }
-            Row(modifier = Modifier.fillMaxWidth()) {
-                OutlinedButton(onClick = onCancel, modifier = Modifier.weight(1f)) {
-                    Text("Cancel")
-                }
-                Spacer(modifier = Modifier.width(12.dp))
-                Button(
-                    onClick = {
-                        currentLocation?.let {
-                            onSubmit(selectedType, it.latitude, it.longitude, capturedPhoto)
-                        }
-                    },
-                    enabled = currentLocation != null,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("Submit")
-                }
             }
         }
     }

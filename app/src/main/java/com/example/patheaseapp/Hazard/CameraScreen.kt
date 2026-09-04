@@ -21,6 +21,8 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -28,16 +30,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
-// In-app camera preview using CameraX. Unlike the old TakePicturePreview()
-// contract, this never launches a separate system Camera app, so MainActivity
-// is never backgrounded/recreated — that's what was causing the login-screen
-// flash, the map re-center, and the captured photo getting lost (leading to
-// "No photo submitted") right after taking a hazard photo.
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CameraScreen(
     onPhotoCaptured: (Bitmap?) -> Unit,
@@ -85,29 +85,28 @@ fun CameraScreen(
         )
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
         when {
             capturedBitmap != null -> {
-                Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .windowInsetsPadding(WindowInsets.safeDrawing)
-                            .padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        Image(
-                            bitmap = capturedBitmap!!.asImageBitmap(),
-                            contentDescription = "Captured hazard photo",
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .weight(1f)
+                Scaffold(
+                    topBar = {
+                        TopAppBar(
+                            title = { Text("Photo Preview", color = Color.White) },
+                            navigationIcon = {
+                                IconButton(onClick = { capturedBitmap = null }) {
+                                    Icon(Icons.Default.Close, contentDescription = "Retake", tint = Color.White)
+                                }
+                            },
+                            colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Black)
                         )
+                    },
+                    bottomBar = {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(top = 16.dp),
-                            horizontalArrangement = Arrangement.Center
+                                .navigationBarsPadding()
+                                .padding(16.dp),
+                            horizontalArrangement = Arrangement.SpaceEvenly
                         ) {
                             Button(
                                 onClick = { onPhotoCaptured(capturedBitmap) },
@@ -120,16 +119,17 @@ fun CameraScreen(
                                 colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
                             ) { Text("Retake") }
                         }
+                    },
+                    containerColor = Color.Black
+                ) { innerPadding ->
+                    Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+                        Image(
+                            bitmap = capturedBitmap!!.asImageBitmap(),
+                            contentDescription = "Captured hazard photo",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Fit
+                        )
                     }
-
-                    // Cancel button at the top, same as in preview mode.
-                    TextButton(
-                        onClick = onCancel,
-                        modifier = Modifier
-                            .align(Alignment.TopStart)
-                            .windowInsetsPadding(WindowInsets.safeDrawing)
-                            .padding(16.dp)
-                    ) { Text("Cancel", color = Color.White) }
                 }
             }
             hasPermission -> {
@@ -159,39 +159,36 @@ fun CameraScreen(
                     }
                 )
 
-                // Controls live in their own inset-safe layer so enableEdgeToEdge()
-                // (see MainActivity) can never draw the shutter or cancel button
-                // underneath the system status/navigation bars.
+                // Close button at top-left
+                IconButton(
+                    onClick = onCancel,
+                    modifier = Modifier
+                        .statusBarsPadding()
+                        .padding(16.dp)
+                        .align(Alignment.TopStart)
+                ) {
+                    Icon(Icons.Default.Close, contentDescription = "Cancel", tint = Color.White)
+                }
+
+                // Shutter button at bottom-center, raised to clear navigation bar
                 Box(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .windowInsetsPadding(WindowInsets.safeDrawing)
+                        .align(Alignment.BottomCenter)
+                        .navigationBarsPadding()
+                        .padding(bottom = 60.dp) 
+                        .size(80.dp)
+                        .clip(CircleShape)
+                        .background(Color.White.copy(alpha = 0.25f))
+                        .border(4.dp, Color.White, CircleShape)
+                        .clickable(onClick = ::takePhoto),
+                    contentAlignment = Alignment.Center
                 ) {
-                    // Cancel, top-left, overlaid on the preview.
-                    TextButton(
-                        onClick = onCancel,
-                        modifier = Modifier.align(Alignment.TopStart).padding(16.dp)
-                    ) { Text("Cancel", color = Color.White) }
-
-                    // Classic circular shutter button, bottom-center overlay.
                     Box(
                         modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .padding(bottom = 32.dp)
-                            .size(80.dp)
+                            .size(64.dp)
                             .clip(CircleShape)
-                            .background(Color.White.copy(alpha = 0.25f))
-                            .border(4.dp, Color.White, CircleShape)
-                            .clickable(onClick = ::takePhoto),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(64.dp)
-                                .clip(CircleShape)
-                                .background(Color.White)
-                        )
-                    }
+                            .background(Color.White)
+                    )
                 }
             }
             else -> {
