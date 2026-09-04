@@ -16,11 +16,17 @@ import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -80,26 +86,28 @@ fun CameraScreen(
         )
     }
 
-    Column(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
+    Box(modifier = Modifier.fillMaxSize()) {
         when {
             capturedBitmap != null -> {
-                Image(
-                    bitmap = capturedBitmap!!.asImageBitmap(),
-                    contentDescription = "Captured hazard photo",
-                    modifier = Modifier.fillMaxWidth().weight(1f)
-                )
-                Row(modifier = Modifier.padding(top = 16.dp)) {
-                    Button(onClick = { onPhotoCaptured(capturedBitmap) }) { Text("Use Photo") }
-                    Spacer(modifier = Modifier.width(12.dp))
-                    OutlinedButton(onClick = { capturedBitmap = null }) { Text("Retake") }
+                Column(
+                    modifier = Modifier.fillMaxSize().padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Image(
+                        bitmap = capturedBitmap!!.asImageBitmap(),
+                        contentDescription = "Captured hazard photo",
+                        modifier = Modifier.fillMaxWidth().weight(1f)
+                    )
+                    Row(modifier = Modifier.padding(top = 16.dp)) {
+                        Button(onClick = { onPhotoCaptured(capturedBitmap) }) { Text("Use Photo") }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        OutlinedButton(onClick = { capturedBitmap = null }) { Text("Retake") }
+                    }
                 }
             }
             hasPermission -> {
                 AndroidView(
-                    modifier = Modifier.fillMaxWidth().weight(1f),
+                    modifier = Modifier.fillMaxSize(),
                     factory = { ctx ->
                         val previewView = PreviewView(ctx)
                         val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
@@ -123,16 +131,43 @@ fun CameraScreen(
                         previewView
                     }
                 )
-                Row(modifier = Modifier.padding(top = 16.dp)) {
-                    Button(onClick = { takePhoto() }) { Text("Take Photo") }
-                    Spacer(modifier = Modifier.width(12.dp))
-                    TextButton(onClick = onCancel) { Text("Cancel") }
+
+                // Cancel, top-left, overlaid on the preview.
+                TextButton(
+                    onClick = onCancel,
+                    modifier = Modifier.align(Alignment.TopStart).padding(16.dp)
+                ) { Text("Cancel", color = Color.White) }
+
+                // Classic circular shutter button, bottom-center overlay.
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 32.dp)
+                        .size(80.dp)
+                        .clip(CircleShape)
+                        .background(Color.White.copy(alpha = 0.25f))
+                        .border(4.dp, Color.White, CircleShape)
+                        .clickable(onClick = ::takePhoto),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(64.dp)
+                            .clip(CircleShape)
+                            .background(Color.White)
+                    )
                 }
             }
             else -> {
-                Text("Requesting camera permission...")
-                Spacer(modifier = Modifier.height(16.dp))
-                TextButton(onClick = onCancel) { Text("Cancel") }
+                Column(
+                    modifier = Modifier.fillMaxSize().padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                ) {
+                    Text("Requesting camera permission...")
+                    Spacer(modifier = Modifier.height(16.dp))
+                    TextButton(onClick = onCancel) { Text("Cancel") }
+                }
             }
         }
     }
