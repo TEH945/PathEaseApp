@@ -18,6 +18,7 @@ import androidx.lifecycle.ViewModelProvider
 import com.google.android.gms.maps.model.LatLng
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.platform.LocalContext
 import com.example.patheaseapp.data.local.AccessibilityRepository
 import com.example.patheaseapp.ui.auth.ForgotPasswordScreen
 import com.example.patheaseapp.ui.auth.LoginScreen
@@ -88,6 +89,7 @@ fun PathEaseApp(
         var selectedLocation by remember { mutableStateOf<LatLng?>(null) }
         var selectedName by remember { mutableStateOf<String?>(null) }
         var selectedAddress by remember { mutableStateOf<String?>(null) }
+        var shouldAutoStartRoute by remember { mutableStateOf(false) }
 
         val homeViewModel: HomeViewModel = viewModel<HomeViewModel>()
         
@@ -99,6 +101,8 @@ fun PathEaseApp(
                 }
             },
         )
+        profileViewModel.setContext(LocalContext.current)
+
 
         Scaffold(
             bottomBar = {
@@ -132,10 +136,12 @@ fun PathEaseApp(
                     initialLocation = selectedLocation,
                     initialName = selectedName,
                     initialAddress = selectedAddress,
+                    initialRouteStarted = shouldAutoStartRoute,
                     onLocationReset = {
                         selectedLocation = null
                         selectedName = null
                         selectedAddress = null
+                        shouldAutoStartRoute = false
                     },
                     modifier = Modifier.padding(innerPadding),
                 )
@@ -150,6 +156,7 @@ fun PathEaseApp(
                             )
                             selectedName = historyItem.destination
                             selectedAddress = "From History"
+                            shouldAutoStartRoute = true
                             currentTab = AppScreen.Map
                         }
                     },

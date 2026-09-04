@@ -83,8 +83,13 @@ import com.example.patheaseapp.Hazard.ReportHazardScreen
 import com.example.patheaseapp.Hazard.vibrate
 import com.example.patheaseapp.Hazard.speakWarning
 import android.content.Intent
+import android.widget.Toast
 import androidx.compose.foundation.layout.Spacer
 import com.example.patheaseapp.Hazard.DetectRoadBumps
+import com.example.patheaseapp.Hazard.Hazard
+import com.example.patheaseapp.Hazard.HazardDetailDialog
+import com.example.patheaseapp.Hazard.createHazardMarkerIcon
+import com.example.patheaseapp.R
 
 private enum class SafetyLevel {
     SAFE, CAUTION, DANGER
@@ -287,7 +292,7 @@ private suspend fun getWalkingRoute(
     }
 }
 
-private fun toHazardPoints(hazards: List<com.example.patheaseapp.Hazard.Hazard>): List<HazardPoint> {
+private fun toHazardPoints(hazards: List<Hazard>): List<HazardPoint> {
     return hazards.map { hazard ->
         HazardPoint(
             location = LatLng(hazard.lat, hazard.lng),
@@ -342,6 +347,7 @@ fun HomeScreen(
     initialLocation: LatLng? = null,
     initialName: String? = null,
     initialAddress: String? = null,
+    initialRouteStarted: Boolean = false,
     onLocationReset: () -> Unit = {},
     hazardViewModel: HazardViewModel = viewModel(),
 ) {
@@ -359,8 +365,8 @@ fun HomeScreen(
     var showReportHazard by remember { mutableStateOf(false) }
     val hazardContext = LocalContext.current
     val hazards by hazardViewModel.hazards.collectAsStateWithLifecycle()
-    var selectedHazard by remember { mutableStateOf<com.example.patheaseapp.Hazard.Hazard?>(null) }
-    val hazardMarkerIcon = remember { com.example.patheaseapp.Hazard.createHazardMarkerIcon(hazardContext) }
+    var selectedHazard by remember { mutableStateOf<Hazard?>(null) }
+    val hazardMarkerIcon = remember { createHazardMarkerIcon(hazardContext) }
 
     LaunchedEffect(nearbyWarning) {
         nearbyWarning?.let { hazard ->
@@ -383,7 +389,7 @@ fun HomeScreen(
         profileViewModel.fetchStarredLocations(userId)
     }
 
-    val apiKey = stringResource(id = com.example.patheaseapp.R.string.google_maps_key)
+    val apiKey = stringResource(id = R.string.google_maps_key)
     var userLocation by remember { mutableStateOf<LatLng?>(value = null) }
     var hasCenteredOnUser by remember { mutableStateOf(value = false) }
     var searchedPlace by remember { mutableStateOf<LatLng?>(value = null) }
@@ -394,6 +400,54 @@ fun HomeScreen(
     var routeLoading by remember { mutableStateOf(value = false) }
     var routeError by remember { mutableStateOf<String?>(value = null) }
     var currentInstruction by remember { mutableStateOf(value = "Follow the pedestrian route") }
+    var autoStartRoutePending by remember { mutableStateOf(false) }
+
+    val startNavigation = {
+        val origin = userLocation
+        val destination = searchedPlace
+
+        if (origin != null && destination != null) {
+            routeLoading = true
+            routeError = null
+
+            coroutineScope.launch {
+                // Add to history
+                profileViewModel.addRouteHistoryItem(
+                    userId = userId,
+                    origin = "Current Location",
+                    destination = searchedPlaceName ?: "Destination",
+                    destLat = searchedPlace?.latitude,
+                    destLng = searchedPlace?.longitude
+                )
+                Toast.makeText(hazardContext, "Safe route recorded in history", Toast.LENGTH_SHORT).show()
+
+                val route = getWalkingRoute(origin, destination, apiKey)
+                routeLoading = false
+
+                if (route != null) {
+                    walkingRoute = route
+                    routeStarted = true
+                    currentInstruction = route.steps.firstOrNull()?.instruction ?: "Follow the pedestrian route"
+
+                    val boundsBuilder = LatLngBounds.Builder()
+                    route.points.forEach { boundsBuilder.include(it) }
+
+                    cameraPositionState.animate(
+                        CameraUpdateFactory.newLatLngBounds(boundsBuilder.build(), 180),
+                    )
+                } else {
+                    routeError = "Unable to find a walking route."
+                }
+            }
+        } else {
+            if (userLocation == null) {
+                Toast.makeText(hazardContext, "Waiting for GPS location...", Toast.LENGTH_SHORT).show()
+            } else if (searchedPlace == null) {
+                Toast.makeText(hazardContext, "Please select a destination first", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
 
     LaunchedEffect(initialLocation) {
         if (initialLocation != null) {
@@ -403,8 +457,18 @@ fun HomeScreen(
             walkingRoute = null
             routeStarted = false
             routeError = null
+            if (initialRouteStarted) {
+                autoStartRoutePending = true
+            }
             cameraPositionState.animate(CameraUpdateFactory.newLatLngZoom(initialLocation, 17f))
             onLocationReset()
+        }
+    }
+
+    LaunchedEffect(autoStartRoutePending, userLocation, searchedPlace) {
+        if (autoStartRoutePending && userLocation != null && searchedPlace != null) {
+            autoStartRoutePending = false
+            startNavigation()
         }
     }
 
@@ -509,6 +573,15 @@ fun HomeScreen(
                 walkingRoute = null
                 routeStarted = false
                 routeError = null
+
+                // Add to history upon search
+                profileViewModel.addRouteHistoryItem(
+                    userId = userId,
+                    origin = "Current Location",
+                    destination = placeName ?: "Destination",
+                    destLat = selectedLatLng.latitude,
+                    destLng = selectedLatLng.longitude
+                )
             }
         }
 
@@ -660,42 +733,7 @@ fun HomeScreen(
 
                     Button(
                         onClick = {
-                            val origin = userLocation
-                            val destination = searchedPlace
-
-                            if (origin != null && destination != null) {
-                                routeLoading = true
-                                routeError = null
-
-                                coroutineScope.launch {
-                                    // Add to history
-                                    profileViewModel.addRouteHistoryItem(
-                                        userId = userId,
-                                        origin = "Current Location",
-                                        destination = searchedPlaceName ?: "Destination",
-                                        destLat = searchedPlace?.latitude,
-                                        destLng = searchedPlace?.longitude
-                                    )
-
-                                    val route = getWalkingRoute(origin, destination, apiKey)
-                                    routeLoading = false
-
-                                    if (route != null) {
-                                        walkingRoute = route
-                                        routeStarted = true
-                                        currentInstruction = route.steps.firstOrNull()?.instruction ?: "Follow the pedestrian route"
-
-                                        val boundsBuilder = LatLngBounds.Builder()
-                                        route.points.forEach { boundsBuilder.include(it) }
-
-                                        cameraPositionState.animate(
-                                            CameraUpdateFactory.newLatLngBounds(boundsBuilder.build(), 180),
-                                        )
-                                    } else {
-                                        routeError = "Unable to find a walking route."
-                                    }
-                                }
-                            }
+                            startNavigation()
                         },
                         modifier = Modifier
                             .fillMaxWidth()
@@ -773,7 +811,7 @@ fun HomeScreen(
         )
     }
     selectedHazard?.let { hazard ->
-        com.example.patheaseapp.Hazard.HazardDetailDialog(
+        HazardDetailDialog(
             hazard = hazard,
             onConfirmRemoved = {
                 hazardViewModel.confirmHazardRemoved(hazard)

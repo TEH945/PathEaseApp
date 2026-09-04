@@ -1,6 +1,7 @@
 package com.example.patheaseapp.ui.profile
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -45,6 +46,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
@@ -71,7 +73,7 @@ fun ProfileScreen(
     LaunchedEffect(userId) {
         viewModel.fetchProfile(userId)
     }
-    
+
     ProfileScreenContent(
         profile = profile,
         isLoading = isLoading,
@@ -95,7 +97,7 @@ fun ProfileScreenContent(
     modifier: Modifier = Modifier,
 ) {
     var isEditing by remember { mutableStateOf(value = false) }
-    
+
     // Use remember(profile) to sync inputs whenever the profile data updates from server
     var nameInput by remember(profile) { mutableStateOf(value = profile?.name ?: "") }
     var emailInput by remember(profile) { mutableStateOf(value = profile?.email ?: "") }
@@ -247,7 +249,7 @@ fun SettingsScreen(
                     .semantics { contentDescription = "Navigate to accessibility settings" },
             )
             HorizontalDivider()
-            
+
             // "Don't lock the screen" toggle moved here
             ListItem(
                 headlineContent = { Text(text = "Don't lock the screen") },
@@ -442,6 +444,8 @@ fun HistoryScreen(
     modifier: Modifier = Modifier,
 ) {
     val history by viewModel.routeHistory.collectAsState()
+    val isLoading by viewModel.isHistoryLoading.collectAsState()
+    val error by viewModel.historyError.collectAsState()
 
     LaunchedEffect(userId) {
         viewModel.fetchRouteHistory(userId)
@@ -449,7 +453,10 @@ fun HistoryScreen(
 
     HistoryScreenContent(
         history = history,
-        onClearHistory = { viewModel.clearHistory() },
+        isLoading = isLoading,
+        error = error,
+        onClearHistory = { viewModel.clearHistory(userId) },
+        onRefresh = { viewModel.fetchRouteHistory(userId) },
         onItemClick = onHistorySelected,
         modifier = modifier,
     )
@@ -459,7 +466,10 @@ fun HistoryScreen(
 @Composable
 fun HistoryScreenContent(
     history: List<RouteHistoryItem>,
+    isLoading: Boolean,
+    error: String?,
     onClearHistory: () -> Unit,
+    onRefresh: () -> Unit,
     onItemClick: (RouteHistoryItem) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -480,15 +490,53 @@ fun HistoryScreenContent(
             )
         },
     ) { padding ->
-        LazyColumn(modifier = Modifier.padding(padding).fillMaxSize()) {
-            items(items = history, key = { it.id ?: it.hashCode().toString() }) { item ->
-                ListItem(
-                    headlineContent = { Text(text = "${item.origin} ➔ ${item.destination}") },
-                    supportingContent = { Text(text = item.timestamp) },
-                    leadingContent = { Icon(Icons.Default.Place, contentDescription = null) },
-                    modifier = Modifier.clickable { onItemClick(item) }
+        Column(modifier = Modifier.padding(padding).fillMaxSize()) {
+            if (isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier
+                        .align(Alignment.CenterHorizontally)
+                        .padding(top = 32.dp)
                 )
-                HorizontalDivider()
+            }
+
+            error?.let {
+                Text(
+                    text = it,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(16.dp),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+
+            if (!isLoading && history.isEmpty() && error == null) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "No route history yet",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = Color.Gray
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Button(onClick = onRefresh) {
+                            Text("Refresh")
+                        }
+                    }
+                }
+            } else if (!isLoading) {
+                LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    items(items = history, key = { it.id ?: it.hashCode().toString() }) { item ->
+                        ListItem(
+                            headlineContent = { Text(text = "${item.origin} ➔ ${item.destination}") },
+                            supportingContent = { Text(text = item.timestamp) },
+                            leadingContent = { Icon(Icons.Default.Place, contentDescription = null) },
+                            modifier = Modifier.clickable { onItemClick(item) }
+                        )
+                        HorizontalDivider()
+                    }
+                }
             }
         }
     }
@@ -542,7 +590,10 @@ fun HistoryScreenPreview() {
                 RouteHistoryItem(id = "1", userId = "user1", origin = "Home", destination = "Office", timestamp = "2023-10-01 08:00"),
                 RouteHistoryItem(id = "2", userId = "user1", origin = "Office", destination = "Home", timestamp = "2023-10-01 17:00"),
             ),
+            isLoading = false,
+            error = null,
             onClearHistory = {},
+            onRefresh = {},
             onItemClick = {},
         )
     }
