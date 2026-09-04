@@ -33,7 +33,6 @@ import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
-
 // In-app camera preview using CameraX. Unlike the old TakePicturePreview()
 // contract, this never launches a separate system Camera app, so MainActivity
 // is never backgrounded/recreated — that's what was causing the login-screen
@@ -132,30 +131,39 @@ fun CameraScreen(
                     }
                 )
 
-                // Cancel, top-left, overlaid on the preview.
-                TextButton(
-                    onClick = onCancel,
-                    modifier = Modifier.align(Alignment.TopStart).padding(16.dp)
-                ) { Text("Cancel", color = Color.White) }
-
-                // Classic circular shutter button, bottom-center overlay.
+                // Controls live in their own inset-safe layer so enableEdgeToEdge()
+                // (see MainActivity) can never draw the shutter or cancel button
+                // underneath the system status/navigation bars.
                 Box(
                     modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(bottom = 32.dp)
-                        .size(80.dp)
-                        .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.25f))
-                        .border(4.dp, Color.White, CircleShape)
-                        .clickable(onClick = ::takePhoto),
-                    contentAlignment = Alignment.Center
+                        .fillMaxSize()
+                        .windowInsetsPadding(WindowInsets.safeDrawing)
                 ) {
+                    // Cancel, top-left, overlaid on the preview.
+                    TextButton(
+                        onClick = onCancel,
+                        modifier = Modifier.align(Alignment.TopStart).padding(16.dp)
+                    ) { Text("Cancel", color = Color.White) }
+
+                    // Classic circular shutter button, bottom-center overlay.
                     Box(
                         modifier = Modifier
-                            .size(64.dp)
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = 32.dp)
+                            .size(80.dp)
                             .clip(CircleShape)
-                            .background(Color.White)
-                    )
+                            .background(Color.White.copy(alpha = 0.25f))
+                            .border(4.dp, Color.White, CircleShape)
+                            .clickable(onClick = ::takePhoto),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(64.dp)
+                                .clip(CircleShape)
+                                .background(Color.White)
+                        )
+                    }
                 }
             }
             else -> {
