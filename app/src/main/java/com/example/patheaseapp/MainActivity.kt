@@ -44,23 +44,27 @@ class MainActivity : ComponentActivity() {
             install(Auth)
             httpConfig {
                 install(HttpTimeout) {
-                    requestTimeoutMillis = 60000L
-                    connectTimeoutMillis = 60000L
-                    socketTimeoutMillis = 60000L
+                    requestTimeoutMillis = 30000L
+                    connectTimeoutMillis = 30000L
                 }
             }
         }
     }
 
-    @OptIn(SupabaseInternal::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        handleDeepLink(intent)
-
-        if (!Places.isInitialized()) {
-            Places.initialize(applicationContext, "AIzaSyAnaGQ6_M6kAVKKrRPovxoccon0jyb4aik")
+        
+        // Initialize external SDKs safely
+        try {
+            if (!Places.isInitialized()) {
+                Places.initialize(applicationContext, "AIzaSyAnaGQ6_M6kAVKKrRPovxoccon0jyb4aik")
+            }
+            MapsInitializer.initialize(applicationContext)
+        } catch (e: Exception) {
+            Log.e("MainActivity", "SDK initialization failed", e)
         }
-        MapsInitializer.initialize(applicationContext)
+
+        handleDeepLink(intent)
 
         enableEdgeToEdge()
         setContent {
@@ -70,11 +74,13 @@ class MainActivity : ComponentActivity() {
                 val accessibilityState by accessibilityRepo.accessibilityState.collectAsStateWithLifecycle()
 
                 LaunchedEffect(accessibilityState.keepScreenOn) {
-                    val window = (context as? Activity)?.window
-                    if (accessibilityState.keepScreenOn) {
-                        window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-                    } else {
-                        window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                    val activityWindow = (context as? Activity)?.window
+                    activityWindow?.let { window ->
+                        if (accessibilityState.keepScreenOn) {
+                            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                        } else {
+                            window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                        }
                     }
                 }
 
