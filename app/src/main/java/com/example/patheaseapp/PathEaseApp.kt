@@ -120,32 +120,36 @@ fun PathEaseApp(
         var selectedName by remember { mutableStateOf<String?>(null) }
         var selectedAddress by remember { mutableStateOf<String?>(null) }
         var shouldAutoStartRoute by remember { mutableStateOf(false) }
-
+        var isReportingHazard by remember { mutableStateOf(false) }
 
         Scaffold(
             bottomBar = {
-                NavigationBar {
-                    val items = listOf(
-                        AppScreen.History,
-                        AppScreen.Starred,
-                        AppScreen.Map,
-                        AppScreen.Settings,
-                        AppScreen.Profile,
-                    )
-                    items.forEach { screen ->
-                        NavigationBarItem(
-                            icon = { Icon(screen.icon, contentDescription = null) },
-                            label = { Text(text = screen.title) },
-                            selected = currentTab == screen,
-                            onClick = { currentTab = screen },
-                            modifier = Modifier.semantics {
-                                contentDescription = "Navigate to ${screen.title} screen"
-                            },
+                if (!isReportingHazard) {
+                    NavigationBar {
+                        val items = listOf(
+                            AppScreen.History,
+                            AppScreen.Starred,
+                            AppScreen.Map,
+                            AppScreen.Settings,
+                            AppScreen.Profile,
                         )
+                        items.forEach { screen ->
+                            NavigationBarItem(
+                                icon = { Icon(screen.icon, contentDescription = null) },
+                                label = { Text(text = screen.title) },
+                                selected = currentTab == screen,
+                                onClick = { currentTab = screen },
+                                modifier = Modifier.semantics {
+                                    contentDescription = "Navigate to ${screen.title} screen"
+                                },
+                            )
+                        }
                     }
                 }
             },
         ) { innerPadding ->
+            val contentModifier = if (isReportingHazard) Modifier else Modifier.padding(innerPadding)
+            
             when (currentTab) {
                 AppScreen.Map -> HomeScreen(
                     homeViewModel = homeViewModel,
@@ -161,7 +165,8 @@ fun PathEaseApp(
                         selectedAddress = null
                         shouldAutoStartRoute = false
                     },
-                    modifier = Modifier.padding(innerPadding),
+                    onReportHazardStatusChange = { isReportingHazard = it },
+                    modifier = contentModifier,
                 )
                 AppScreen.History -> HistoryScreen(
                     viewModel = profileViewModel,

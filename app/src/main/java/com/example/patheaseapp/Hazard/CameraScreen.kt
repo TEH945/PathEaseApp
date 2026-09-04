@@ -15,6 +15,7 @@ import androidx.camera.core.ImageProxy
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -101,23 +102,30 @@ fun CameraScreen(
                         )
                     },
                     bottomBar = {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .navigationBarsPadding()
-                                .padding(16.dp),
-                            horizontalArrangement = Arrangement.SpaceEvenly
+                        Surface(
+                            color = Color.Black.copy(alpha = 0.7f),
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            Button(
-                                onClick = { onPhotoCaptured(capturedBitmap) },
-                                modifier = Modifier.weight(1f)
-                            ) { Text("Use Photo") }
-                            Spacer(modifier = Modifier.width(12.dp))
-                            OutlinedButton(
-                                onClick = { capturedBitmap = null },
-                                modifier = Modifier.weight(1f),
-                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
-                            ) { Text("Retake") }
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .navigationBarsPadding()
+                                    .padding(horizontal = 24.dp, vertical = 20.dp),
+                                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                OutlinedButton(
+                                    onClick = { capturedBitmap = null },
+                                    modifier = Modifier.weight(1f),
+                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+                                    border = BorderStroke(1.dp, Color.White)
+                                ) { Text("Retake") }
+                                
+                                Button(
+                                    onClick = { onPhotoCaptured(capturedBitmap) },
+                                    modifier = Modifier.weight(1f),
+                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                                ) { Text("Use Photo") }
+                            }
                         }
                     },
                     containerColor = Color.Black
@@ -175,7 +183,7 @@ fun CameraScreen(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .navigationBarsPadding()
-                        .padding(bottom = 60.dp) 
+                        .padding(bottom = 80.dp) 
                         .size(80.dp)
                         .clip(CircleShape)
                         .background(Color.White.copy(alpha = 0.25f))

@@ -389,6 +389,7 @@ fun HomeScreen(
     initialAddress: String? = null,
     initialRouteStarted: Boolean = false,
     onLocationReset: () -> Unit = {},
+    onReportHazardStatusChange: (Boolean) -> Unit = {},
     hazardViewModel: HazardViewModel = viewModel(factory = HazardViewModel.Factory),
 ) {
     val kualaLumpur = LatLng(3.1390, 101.6869)
@@ -402,6 +403,10 @@ fun HomeScreen(
     val sosTriggered by hazardViewModel.sosTriggered.collectAsStateWithLifecycle()
     val emergencyContact by hazardViewModel.emergencyContact.collectAsStateWithLifecycle()
     var showReportHazard by remember { mutableStateOf(false) }
+
+    LaunchedEffect(showReportHazard) {
+        onReportHazardStatusChange(showReportHazard)
+    }
     val hazardContext = LocalContext.current
     val hazards by hazardViewModel.hazards.collectAsStateWithLifecycle()
     var selectedHazard by remember { mutableStateOf<Hazard?>(null) }

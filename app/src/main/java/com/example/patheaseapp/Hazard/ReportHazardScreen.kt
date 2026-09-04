@@ -57,26 +57,35 @@ fun ReportHazardScreen(
             )
         },
         bottomBar = {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .navigationBarsPadding()
-                    .padding(16.dp)
+            Surface(
+                tonalElevation = 3.dp,
+                shadowElevation = 8.dp,
+                modifier = Modifier.fillMaxWidth()
             ) {
-                OutlinedButton(onClick = onCancel, modifier = Modifier.weight(1f)) {
-                    Text("Cancel")
-                }
-                Spacer(modifier = Modifier.width(12.dp))
-                Button(
-                    onClick = {
-                        currentLocation?.let {
-                            onSubmit(selectedType, it.latitude, it.longitude, capturedPhoto)
-                        }
-                    },
-                    enabled = currentLocation != null,
-                    modifier = Modifier.weight(1f)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .navigationBarsPadding()
+                        .padding(horizontal = 20.dp, vertical = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text("Submit")
+                    OutlinedButton(
+                        onClick = onCancel,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Cancel")
+                    }
+                    Button(
+                        onClick = {
+                            currentLocation?.let {
+                                onSubmit(selectedType, it.latitude, it.longitude, capturedPhoto)
+                            }
+                        },
+                        enabled = currentLocation != null,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Submit Report")
+                    }
                 }
             }
         }
