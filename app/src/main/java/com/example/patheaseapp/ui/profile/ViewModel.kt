@@ -269,24 +269,6 @@ class ProfileViewModel(
         }
     }
 
-    fun toggleWheelchairAccess(enabled: Boolean) {
-        accessibilityRepo.updatePreferences {
-            it.copy(
-                wheelchairAccessEnabled = enabled,
-                strollerModeEnabled = if (enabled) false else it.strollerModeEnabled,
-            )
-        }
-    }
-
-    fun toggleStrollerMode(enabled: Boolean) {
-        accessibilityRepo.updatePreferences {
-            it.copy(
-                strollerModeEnabled = enabled,
-                wheelchairAccessEnabled = if (enabled) false else it.wheelchairAccessEnabled,
-            )
-        }
-    }
-
     fun toggleBlindMode(enabled: Boolean) {
         accessibilityRepo.updatePreferences { it.copy(blindModeEnabled = enabled) }
     }

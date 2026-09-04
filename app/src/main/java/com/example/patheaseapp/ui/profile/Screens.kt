@@ -271,7 +271,6 @@ fun SettingsScreen(
 @Composable
 fun AccessibilitySettingsScreen(
     viewModel: ProfileViewModel,
-    ttsManager: TtsManager,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -281,11 +280,7 @@ fun AccessibilitySettingsScreen(
         settings = settings,
         onToggleWheelchairAccess = { viewModel.toggleWheelchairAccess(it) },
         onToggleStrollerMode = { viewModel.toggleStrollerMode(it) },
-        onToggleBlindMode = { enabled ->
-            viewModel.toggleBlindMode(enabled)
-            val msg = if (enabled) "Blind mode enabled" else "Blind mode disabled"
-            ttsManager.speak(msg)
-        },
+        onToggleBlindMode = { viewModel.toggleBlindMode(it) },
         onBack = onBack,
         modifier = modifier,
     )
