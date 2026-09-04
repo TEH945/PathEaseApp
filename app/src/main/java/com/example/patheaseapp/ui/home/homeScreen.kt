@@ -60,6 +60,7 @@ import com.example.patheaseapp.Hazard.HazardDetailDialog
 import com.example.patheaseapp.Hazard.HazardViewModel
 import com.example.patheaseapp.Hazard.ReportHazardScreen
 import com.example.patheaseapp.Hazard.StartLocationUpdates
+import com.example.patheaseapp.Hazard.StillnessCheckDialog
 import com.example.patheaseapp.Hazard.WarningBanner
 import com.example.patheaseapp.Hazard.createHazardMarkerIcon
 import com.example.patheaseapp.Hazard.speakWarning
@@ -72,10 +73,9 @@ import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.LatLngBounds
 import com.google.android.libraries.places.api.Places
-import com.google.android.libraries.places.api.model.AutocompleteSessionToken
+import com.google.android.libraries.places.api.model.CircularBounds
 import com.google.android.libraries.places.api.model.Place
-import com.google.android.libraries.places.api.net.FetchPlaceRequest
-import com.google.android.libraries.places.api.net.FindAutocompletePredictionsRequest
+import com.google.android.libraries.places.api.net.SearchByTextRequest
 import com.google.android.libraries.places.widget.Autocomplete
 import com.google.android.libraries.places.widget.AutocompleteActivity
 import com.google.android.libraries.places.widget.model.AutocompleteActivityMode
@@ -304,25 +304,27 @@ private suspend fun getWalkingRoute(
 private suspend fun resolveSpokenTextToPlace(
     context: android.content.Context,
     spokenText: String,
+    userLocation: LatLng?,
 ): Place? = withContext(Dispatchers.IO) {
     try {
         if (!Places.isInitialized()) {
             Places.initialize(context, context.getString(R.string.google_maps_key))
         }
         val placesClient = Places.createClient(context)
-        val token = AutocompleteSessionToken.newInstance()
-        val predictionsRequest = FindAutocompletePredictionsRequest.builder()
-            .setSessionToken(token)
-            .setQuery(spokenText)
-            .build()
-        val predictionsResponse = placesClient.findAutocompletePredictions(predictionsRequest).await()
-        val topPrediction = predictionsResponse.autocompletePredictions.firstOrNull()
-            ?: return@withContext null
-        val fetchRequest = FetchPlaceRequest.newInstance(
-            topPrediction.placeId,
+
+        val requestBuilder = SearchByTextRequest.builder(
+            spokenText,
             listOf(Place.Field.ID, Place.Field.NAME, Place.Field.LAT_LNG, Place.Field.ADDRESS),
-        )
-        placesClient.fetchPlace(fetchRequest).await().place
+        ).setMaxResultCount(1)
+
+        userLocation?.let { loc ->
+            requestBuilder.setLocationBias(
+                CircularBounds.newInstance(loc, 20_000.0),
+            )
+        }
+
+        val response = placesClient.searchByText(requestBuilder.build()).await()
+        response.places.firstOrNull()
     } catch (e: Exception) {
         Log.e("VoiceSearch", "Failed to resolve spoken place: $spokenText", e)
         null
@@ -387,7 +389,7 @@ fun HomeScreen(
     initialAddress: String? = null,
     initialRouteStarted: Boolean = false,
     onLocationReset: () -> Unit = {},
-    hazardViewModel: HazardViewModel = viewModel(),
+    hazardViewModel: HazardViewModel = viewModel(factory = HazardViewModel.Factory),
 ) {
     val kualaLumpur = LatLng(3.1390, 101.6869)
     val cameraPositionState = rememberCameraPositionState {
@@ -601,7 +603,7 @@ fun HomeScreen(
                 .align(Alignment.TopCenter)
                 .padding(top = 24.dp),
         ) {
-            MapSearchBar { selectedLatLng, placeName, placeAddress ->
+            MapSearchBar(userLocation = userLocation) { selectedLatLng, placeName, placeAddress ->
                 searchedPlace = selectedLatLng
                 searchedPlaceName = placeName
                 searchedPlaceAddress = placeAddress
@@ -898,7 +900,10 @@ fun SafetyIndicator(color: Color, text: String) {
 }
 
 @Composable
-fun MapSearchBar(onPlaceSelected: (LatLng, String?, String?) -> Unit) {
+fun MapSearchBar(
+    userLocation: LatLng?,
+    onPlaceSelected: (LatLng, String?, String?) -> Unit,
+) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val fields = listOf(Place.Field.ID, Place.Field.NAME, Place.Field.LAT_LNG, Place.Field.ADDRESS)
@@ -928,9 +933,10 @@ fun MapSearchBar(onPlaceSelected: (LatLng, String?, String?) -> Unit) {
             val spokenText = result.data
                 ?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
                 ?.firstOrNull()
+
             if (!spokenText.isNullOrBlank()) {
                 coroutineScope.launch {
-                    val place = resolveSpokenTextToPlace(context, spokenText)
+                    val place = resolveSpokenTextToPlace(context, spokenText, userLocation)
                     if (place?.latLng != null) {
                         onPlaceSelected(place.latLng!!, place.name, place.address)
                     } else {
