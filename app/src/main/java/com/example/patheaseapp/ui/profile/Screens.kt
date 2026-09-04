@@ -277,8 +277,6 @@ fun AccessibilitySettingsScreen(
 
     AccessibilitySettingsScreenContent(
         settings = settings,
-        onToggleVisualAssistance = { viewModel.toggleVisualAssistance(it) },
-        onToggleVoiceGuidance = { viewModel.toggleVoiceGuidance(it) },
         onToggleWheelchairAccess = { viewModel.toggleWheelchairAccess(it) },
         onToggleStrollerMode = { viewModel.toggleStrollerMode(it) },
         onToggleBlindMode = { viewModel.toggleBlindMode(it) },
@@ -291,8 +289,6 @@ fun AccessibilitySettingsScreen(
 @Composable
 fun AccessibilitySettingsScreenContent(
     settings: AccessibilityPreferences,
-    onToggleVisualAssistance: (Boolean) -> Unit,
-    onToggleVoiceGuidance: (Boolean) -> Unit,
     onToggleWheelchairAccess: (Boolean) -> Unit,
     onToggleStrollerMode: (Boolean) -> Unit,
     onToggleBlindMode: (Boolean) -> Unit,
@@ -318,20 +314,6 @@ fun AccessibilitySettingsScreenContent(
                 .padding(all = 16.dp)
                 .fillMaxSize(),
         ) {
-            AccessibilityToggleRow(
-                title = "Visual Assistance Mode",
-                description = "Enables high contrast and extra screen reader detail",
-                checked = settings.visualAssistanceMode,
-                onCheckedChange = onToggleVisualAssistance,
-            )
-            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-            AccessibilityToggleRow(
-                title = "Voice Guidance",
-                description = "Turn-by-turn spoken prompts during navigation",
-                checked = settings.voiceGuidanceEnabled,
-                onCheckedChange = onToggleVoiceGuidance,
-            )
-            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             AccessibilityToggleRow(
                 title = "Blind Mode",
                 description = "Optimized interface and specific audio cues for blind users",
@@ -556,8 +538,6 @@ fun AccessibilitySettingsScreenPreview() {
     PathEaseAppTheme {
         AccessibilitySettingsScreenContent(
             settings = AccessibilityPreferences(),
-            onToggleVisualAssistance = {},
-            onToggleVoiceGuidance = {},
             onToggleWheelchairAccess = {},
             onToggleStrollerMode = {},
             onToggleBlindMode = {},

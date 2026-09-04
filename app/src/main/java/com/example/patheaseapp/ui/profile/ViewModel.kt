@@ -269,15 +269,6 @@ class ProfileViewModel(
         }
     }
 
-    // Accessibility Toggle Functions
-    fun toggleVisualAssistance(enabled: Boolean) {
-        accessibilityRepo.updatePreferences { it.copy(visualAssistanceMode = enabled) }
-    }
-
-    fun toggleVoiceGuidance(enabled: Boolean) {
-        accessibilityRepo.updatePreferences { it.copy(voiceGuidanceEnabled = enabled) }
-    }
-
     fun toggleWheelchairAccess(enabled: Boolean) {
         accessibilityRepo.updatePreferences {
             it.copy(
