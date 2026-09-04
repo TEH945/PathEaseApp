@@ -74,6 +74,17 @@ import kotlin.math.cos
 import kotlin.math.pow
 import kotlin.math.sin
 import kotlin.math.sqrt
+import androidx.compose.material.icons.filled.Warning
+import androidx.core.net.toUri
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.patheaseapp.Hazard.HazardViewModel
+import com.example.patheaseapp.Hazard.WarningBanner
+import com.example.patheaseapp.Hazard.ReportHazardScreen
+import com.example.patheaseapp.Hazard.vibrate
+import com.example.patheaseapp.Hazard.speakWarning
+import android.content.Intent
+import androidx.compose.foundation.layout.Spacer
+import com.example.patheaseapp.Hazard.DetectRoadBumps
 
 private enum class SafetyLevel {
     SAFE, CAUTION, DANGER
@@ -276,6 +287,19 @@ private suspend fun getWalkingRoute(
     }
 }
 
+private fun toHazardPoints(hazards: List<com.example.patheaseapp.Hazard.Hazard>): List<HazardPoint> {
+    return hazards.map { hazard ->
+        HazardPoint(
+            location = LatLng(hazard.lat, hazard.lng),
+            level = when (hazard.type) {
+                "Barrier" -> SafetyLevel.DANGER
+                "Bumpy Road" -> SafetyLevel.CAUTION
+                else -> SafetyLevel.CAUTION
+            },
+            radiusMeters = if (hazard.type == "Barrier") 40.0 else 50.0,
+        )
+    }
+}
 private fun getSafetyLevel(point: LatLng, hazards: List<HazardPoint>): SafetyLevel {
     var level = SafetyLevel.SAFE
     for (hazard in hazards) {
@@ -311,6 +335,7 @@ private fun formatDuration(seconds: Long): String {
 
 @Composable
 fun HomeScreen(
+    modifier: Modifier = Modifier,
     @Suppress("unused") homeViewModel: HomeViewModel,
     profileViewModel: ProfileViewModel,
     userId: String,
@@ -318,7 +343,7 @@ fun HomeScreen(
     initialName: String? = null,
     initialAddress: String? = null,
     onLocationReset: () -> Unit = {},
-    modifier: Modifier = Modifier,
+    hazardViewModel: HazardViewModel = viewModel(),
 ) {
     val kualaLumpur = LatLng(3.1390, 101.6869)
     val cameraPositionState = rememberCameraPositionState {
@@ -326,6 +351,33 @@ fun HomeScreen(
     }
     val coroutineScope = rememberCoroutineScope()
     val starredLocations by profileViewModel.starredLocations.collectAsStateWithLifecycle()
+    // NEW: hazard state
+    val nearbyWarning by hazardViewModel.nearbyWarning.collectAsStateWithLifecycle()
+    val isStillTooLong by hazardViewModel.isStillTooLong.collectAsStateWithLifecycle()
+    val sosTriggered by hazardViewModel.sosTriggered.collectAsStateWithLifecycle()
+    val emergencyContact by hazardViewModel.emergencyContact.collectAsStateWithLifecycle()
+    var showReportHazard by remember { mutableStateOf(false) }
+    val hazardContext = LocalContext.current
+    val hazards by hazardViewModel.hazards.collectAsStateWithLifecycle()
+    var selectedHazard by remember { mutableStateOf<com.example.patheaseapp.Hazard.Hazard?>(null) }
+    val hazardMarkerIcon = remember { com.example.patheaseapp.Hazard.createHazardMarkerIcon(hazardContext) }
+
+    LaunchedEffect(nearbyWarning) {
+        nearbyWarning?.let { hazard ->
+            vibrate(hazardContext)
+            speakWarning(hazardContext, "${hazard.type} ahead, ${hazard.distanceMeters.toInt()} meters")
+        }
+    }
+
+    LaunchedEffect(sosTriggered) {
+        if (sosTriggered) {
+            val intent = Intent(Intent.ACTION_DIAL).apply {
+                data = "tel:$emergencyContact".toUri()
+            }
+            hazardContext.startActivity(intent)
+            hazardViewModel.onSosHandled()
+        }
+    }
 
     LaunchedEffect(userId) {
         profileViewModel.fetchStarredLocations(userId)
@@ -356,15 +408,33 @@ fun HomeScreen(
         }
     }
 
+    if (showReportHazard) {
+        ReportHazardScreen(
+            currentLocation = userLocation,
+            onSubmit = { type, lat, lng, photo ->
+                hazardViewModel.reportHazard(type, lat, lng, photo)
+                showReportHazard = false
+            },
+            onCancel = { showReportHazard = false }
+        )
+        return
+    }
     val isStarred = remember(searchedPlace, starredLocations) {
         starredLocations.any {
             (it.latitude == searchedPlace?.latitude) && (it.longitude == searchedPlace?.longitude)
+        }
+    }
+    DetectRoadBumps{
+        userLocation?.let { loc ->
+            hazardViewModel.onBumpDetected(loc.latitude, loc.longitude)
+            vibrate(hazardContext) // immediate reactive feedback, separate from the 50m proactive warning
         }
     }
 
     StartLocationUpdates { lat: Double, lng: Double ->
         val latLng = LatLng(lat, lng)
         userLocation = latLng
+        hazardViewModel.onLocationUpdate(lat, lng)
 
         if (!hasCenteredOnUser) {
             hasCenteredOnUser = true
@@ -401,7 +471,7 @@ fun HomeScreen(
             modifier = Modifier.fillMaxSize(),
             cameraPositionState = cameraPositionState,
             properties = MapProperties(isMyLocationEnabled = userLocation != null),
-            uiSettings = MapUiSettings(myLocationButtonEnabled = false),
+            uiSettings = MapUiSettings(myLocationButtonEnabled = false, zoomControlsEnabled = false),
         ) {
             searchedPlace?.let { place ->
                 Marker(
@@ -412,7 +482,18 @@ fun HomeScreen(
             }
 
             walkingRoute?.let { route ->
-                DrawSafetyRoute(points = route.points)
+                DrawSafetyRoute(points = route.points, hazards = toHazardPoints(hazards))
+            }
+            hazards.forEach { hazard ->
+                Marker(
+                    state = MarkerState(position = LatLng(hazard.lat, hazard.lng)),
+                    icon = hazardMarkerIcon,
+                    title = hazard.type,
+                    onClick = {
+                        selectedHazard = hazard
+                        true // we're showing our own dialog, not the default info window
+                    }
+                )
             }
         }
 
@@ -451,6 +532,53 @@ fun HomeScreen(
                 imageVector = Icons.Default.MyLocation,
                 contentDescription = "Recenter map",
             )
+        }
+
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(16.dp),
+        ) {
+            FloatingActionButton(
+                onClick = {
+                    coroutineScope.launch {
+                        cameraPositionState.animate(CameraUpdateFactory.zoomIn())
+                    }
+                },
+                modifier = Modifier.size(48.dp),
+                containerColor = Color.White,
+                contentColor = MaterialTheme.colorScheme.primary,
+                shape = CircleShape,
+            ) {
+                Text("+", style = MaterialTheme.typography.titleLarge)
+            }
+            Spacer(modifier = Modifier.padding(4.dp))
+            FloatingActionButton(
+                onClick = {
+                    coroutineScope.launch {
+                        cameraPositionState.animate(CameraUpdateFactory.zoomOut())
+                    }
+                },
+                modifier = Modifier.size(48.dp),
+                containerColor = Color.White,
+                contentColor = MaterialTheme.colorScheme.primary,
+                shape = CircleShape,
+            ) {
+                Text("−", style = MaterialTheme.typography.titleLarge)
+            }
+        }
+        FloatingActionButton(
+            onClick = { showReportHazard = true },
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(16.dp),
+        ) {
+            Icon(Icons.Default.Warning, contentDescription = "Report a hazard")
+        }
+        nearbyWarning?.let {
+            Box(modifier = Modifier.align(Alignment.TopCenter).padding(top = 90.dp)) {
+                WarningBanner(it)
+            }
         }
 
         if ((searchedPlace != null) && !routeStarted) {
@@ -637,6 +765,22 @@ fun HomeScreen(
                 }
             }
         }
+    }
+    if (isStillTooLong) {
+        StillnessCheckDialog(
+            onSafe = { hazardViewModel.dismissStillnessCheck() },
+            onSOS = { hazardViewModel.triggerSOS() }
+        )
+    }
+    selectedHazard?.let { hazard ->
+        com.example.patheaseapp.Hazard.HazardDetailDialog(
+            hazard = hazard,
+            onConfirmRemoved = {
+                hazardViewModel.confirmHazardRemoved(hazard)
+                selectedHazard = null
+            },
+            onDismiss = { selectedHazard = null }
+        )
     }
 }
 

@@ -11,11 +11,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import com.google.android.gms.maps.model.LatLng
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.runtime.saveable.rememberSaveable
 import com.example.patheaseapp.data.local.AccessibilityRepository
 import com.example.patheaseapp.ui.auth.ForgotPasswordScreen
 import com.example.patheaseapp.ui.auth.LoginScreen
@@ -27,6 +29,7 @@ import com.example.patheaseapp.ui.profile.ProfileScreen
 import com.example.patheaseapp.ui.profile.ProfileViewModel
 import com.example.patheaseapp.ui.profile.SettingsScreen
 import com.example.patheaseapp.ui.profile.StarredLocationsScreen
+import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.status.SessionStatus
 
@@ -41,46 +44,43 @@ sealed class AppScreen(@Suppress("unused") val route: String, val title: String,
 
 @Composable
 fun PathEaseApp(
-    supabaseClient: io.github.jan.supabase.SupabaseClient,
+    supabaseClient: SupabaseClient,
     accessibilityRepo: AccessibilityRepository,
+    initialForgotPasswordVisible: Boolean = false,
+    onForgotPasswordVisibleChanged: (Boolean) -> Unit = {},
 ) {
     val sessionStatus by supabaseClient.auth.sessionStatus.collectAsState()
     val session = (sessionStatus as? SessionStatus.Authenticated)?.session
 
-    var isForgotPasswordVisible by remember { mutableStateOf(value = false) }
-    var isRecoveryMode by remember { mutableStateOf(value = false) }
-
-    val context = LocalContext.current
-    val intent = (context as? android.app.Activity)?.intent
-
-    // Detect if we entered via a recovery link
-    LaunchedEffect(sessionStatus, intent) {
-        val uri = intent?.data
-        if ((uri != null) && uri.toString().contains("type=recovery")) {
-            isRecoveryMode = true
-        } else if ((sessionStatus is SessionStatus.Authenticated) && isForgotPasswordVisible) {
-            isRecoveryMode = true
+    var isForgotPasswordVisible by rememberSaveable { mutableStateOf(initialForgotPasswordVisible) }
+    
+    // Sync state with parent if needed
+    LaunchedEffect(initialForgotPasswordVisible) {
+        if (initialForgotPasswordVisible) {
+            isForgotPasswordVisible = true
         }
     }
 
-    if ((session == null) || isRecoveryMode) {
-        if (isForgotPasswordVisible || isRecoveryMode) {
+    LaunchedEffect(isForgotPasswordVisible) {
+        onForgotPasswordVisibleChanged(isForgotPasswordVisible)
+    }
+    
+    // 如果 session 已存在，说明用户已登录（包括通过重置密码链接进入）
+    val isRecoveryMode = session != null && isForgotPasswordVisible
+
+    if (session == null || (isRecoveryMode)) {
+        if (isForgotPasswordVisible) {
             ForgotPasswordScreen(
                 supabaseClient = supabaseClient,
-                onBack = {
-                    isForgotPasswordVisible = false
-                    isRecoveryMode = false
-                },
-                onSuccess = {
-                    isForgotPasswordVisible = false
-                    isRecoveryMode = false
-                },
-                isRecoveryMode = isRecoveryMode,
+                onBack = { isForgotPasswordVisible = false },
+                onSuccess = { isForgotPasswordVisible = false },
+                isRecoveryMode = session != null // 只要有 session 且在忘记密码页，就视为恢复模式
             )
         } else {
             LoginScreen(
                 supabaseClient = supabaseClient,
-            ) { isForgotPasswordVisible = true }
+                onForgotPassword = { isForgotPasswordVisible = true }
+            )
         }
     } else {
         val userId = session.user?.id ?: ""
@@ -92,8 +92,8 @@ fun PathEaseApp(
         val homeViewModel: HomeViewModel = viewModel<HomeViewModel>()
         
         val profileViewModel: ProfileViewModel = viewModel(
-            factory = object : androidx.lifecycle.ViewModelProvider.Factory {
-                override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+            factory = object : ViewModelProvider.Factory {
+                override fun <T : ViewModel> create(modelClass: Class<T>): T {
                     @Suppress("UNCHECKED_CAST")
                     return ProfileViewModel(supabaseClient, accessibilityRepo) as T
                 }
@@ -115,13 +115,7 @@ fun PathEaseApp(
                             icon = { Icon(screen.icon, contentDescription = null) },
                             label = { Text(text = screen.title) },
                             selected = currentTab == screen,
-                            onClick = { 
-                                currentTab = screen
-                                if (screen != AppScreen.Map) {
-                                    // Reset selected location when leaving map? 
-                                    // Or maybe keep it so we can go back.
-                                }
-                            },
+                            onClick = { currentTab = screen },
                             modifier = Modifier.semantics {
                                 contentDescription = "Navigate to ${screen.title} screen"
                             },
@@ -155,10 +149,7 @@ fun PathEaseApp(
                                 historyItem.destinationLongitude
                             )
                             selectedName = historyItem.destination
-                            selectedAddress = "From History" // Address not saved in history
-                            currentTab = AppScreen.Map
-                        } else {
-                            // Fallback if no coordinates
+                            selectedAddress = "From History"
                             currentTab = AppScreen.Map
                         }
                     },

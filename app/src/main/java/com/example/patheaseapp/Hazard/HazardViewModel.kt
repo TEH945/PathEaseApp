@@ -1,6 +1,7 @@
 package com.example.patheaseapp.Hazard
 
 import android.location.Location
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.patheaseapp.sharedata.UserProfileRepository
@@ -8,7 +9,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import java.util.UUID
+import kotlinx.coroutines.CancellationException
+
 // Controller/ViewModel for the Hazard/Barrier & Safety feature — holds all state and business logic.
 class HazardViewModel(
     private val repository: HazardRepository = HazardRepository()
@@ -30,7 +32,44 @@ class HazardViewModel(
 
     init {
         viewModelScope.launch {
-            _hazards.value = repository.getHazards()
+            try {
+                _hazards.value = repository.getHazards()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e("HazardViewModel", "Failed to load hazards", e)
+            }
+        }
+    }
+
+    fun onBumpDetected(lat: Double, lng: Double) {
+        viewModelScope.launch {
+            try {
+                repository.addHazard(
+                    type = "Bumpy Road",
+                    lat = lat,
+                    lng = lng,
+                    photoUrl = null,
+                    reportedBy = "Auto-detected"
+                )
+                _hazards.value = repository.getHazards()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e("HazardViewModel", "Failed to report bump", e)
+            }
+        }
+    }
+    fun confirmHazardRemoved(hazard: Hazard) {
+        viewModelScope.launch {
+            try {
+                repository.confirmRemoved(hazard.id, hazard.confirmedRemovedCount)
+                _hazards.value = repository.getHazards()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e("HazardViewModel", "Failed to confirm removal", e)
+            }
         }
     }
 
@@ -43,10 +82,27 @@ class HazardViewModel(
             _nearbyWarning.value = updated.firstOrNull { it.distanceMeters <= 50f }
         }
     }
-
-    fun reportHazard(type: String, lat: Double, lng: Double, photoUri: String?) {
+    fun reportHazard(type: String, lat: Double, lng: Double, photo: android.graphics.Bitmap?) {
         viewModelScope.launch {
-            repository.addHazard(Hazard(UUID.randomUUID().toString(), type, lat, lng))
+            try {
+                val photoUrl = photo?.let { bitmap ->
+                    val stream = java.io.ByteArrayOutputStream()
+                    bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 80, stream)
+                    repository.uploadPhoto(stream.toByteArray())
+                }
+                repository.addHazard(
+                    type = type,
+                    lat = lat,
+                    lng = lng,
+                    photoUrl = photoUrl,
+                    reportedBy = "Anonymous"
+                )
+                _hazards.value = repository.getHazards()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e("HazardViewModel", "Failed to submit report", e)
+            }
         }
     }
 
