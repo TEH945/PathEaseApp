@@ -1,14 +1,20 @@
 package com.example.patheaseapp.ui.home
 
 import android.app.Activity
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.speech.RecognizerIntent
 import android.util.Log
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -16,11 +22,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -43,15 +51,31 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.patheaseapp.Hazard.DetectRoadBumps
+import com.example.patheaseapp.Hazard.Hazard
+import com.example.patheaseapp.Hazard.HazardDetailDialog
+import com.example.patheaseapp.Hazard.HazardViewModel
+import com.example.patheaseapp.Hazard.ReportHazardScreen
 import com.example.patheaseapp.Hazard.StartLocationUpdates
+import com.example.patheaseapp.Hazard.StillnessCheckDialog
+import com.example.patheaseapp.Hazard.WarningBanner
+import com.example.patheaseapp.Hazard.createHazardMarkerIcon
+import com.example.patheaseapp.Hazard.speakWarning
+import com.example.patheaseapp.Hazard.vibrate
+import com.example.patheaseapp.R
 import com.example.patheaseapp.ui.profile.ProfileViewModel
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.LatLngBounds
+import com.google.android.libraries.places.api.Places
+import com.google.android.libraries.places.api.model.CircularBounds
 import com.google.android.libraries.places.api.model.Place
+import com.google.android.libraries.places.api.net.SearchByTextRequest
 import com.google.android.libraries.places.widget.Autocomplete
 import com.google.android.libraries.places.widget.AutocompleteActivity
 import com.google.android.libraries.places.widget.model.AutocompleteActivityMode
@@ -64,6 +88,7 @@ import com.google.maps.android.compose.Polyline
 import com.google.maps.android.compose.rememberCameraPositionState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.net.HttpURLConnection
@@ -74,22 +99,6 @@ import kotlin.math.cos
 import kotlin.math.pow
 import kotlin.math.sin
 import kotlin.math.sqrt
-import androidx.compose.material.icons.filled.Warning
-import androidx.core.net.toUri
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.patheaseapp.Hazard.HazardViewModel
-import com.example.patheaseapp.Hazard.WarningBanner
-import com.example.patheaseapp.Hazard.ReportHazardScreen
-import com.example.patheaseapp.Hazard.vibrate
-import com.example.patheaseapp.Hazard.speakWarning
-import android.content.Intent
-import android.widget.Toast
-import androidx.compose.foundation.layout.Spacer
-import com.example.patheaseapp.Hazard.DetectRoadBumps
-import com.example.patheaseapp.Hazard.Hazard
-import com.example.patheaseapp.Hazard.HazardDetailDialog
-import com.example.patheaseapp.Hazard.createHazardMarkerIcon
-import com.example.patheaseapp.R
 
 private enum class SafetyLevel {
     SAFE, CAUTION, DANGER
@@ -292,6 +301,36 @@ private suspend fun getWalkingRoute(
     }
 }
 
+private suspend fun resolveSpokenTextToPlace(
+    context: android.content.Context,
+    spokenText: String,
+    userLocation: LatLng?,
+): Place? = withContext(Dispatchers.IO) {
+    try {
+        if (!Places.isInitialized()) {
+            Places.initialize(context, context.getString(R.string.google_maps_key))
+        }
+        val placesClient = Places.createClient(context)
+
+        val requestBuilder = SearchByTextRequest.builder(
+            spokenText,
+            listOf(Place.Field.ID, Place.Field.NAME, Place.Field.LAT_LNG, Place.Field.ADDRESS),
+        ).setMaxResultCount(1)
+
+        userLocation?.let { loc ->
+            requestBuilder.setLocationBias(
+                CircularBounds.newInstance(loc, 20_000.0),
+            )
+        }
+
+        val response = placesClient.searchByText(requestBuilder.build()).await()
+        response.places.firstOrNull()
+    } catch (e: Exception) {
+        Log.e("VoiceSearch", "Failed to resolve spoken place: $spokenText", e)
+        null
+    }
+}
+
 private fun toHazardPoints(hazards: List<Hazard>): List<HazardPoint> {
     return hazards.map { hazard ->
         HazardPoint(
@@ -305,6 +344,7 @@ private fun toHazardPoints(hazards: List<Hazard>): List<HazardPoint> {
         )
     }
 }
+
 private fun getSafetyLevel(point: LatLng, hazards: List<HazardPoint>): SafetyLevel {
     var level = SafetyLevel.SAFE
     for (hazard in hazards) {
@@ -349,7 +389,7 @@ fun HomeScreen(
     initialAddress: String? = null,
     initialRouteStarted: Boolean = false,
     onLocationReset: () -> Unit = {},
-    hazardViewModel: HazardViewModel = viewModel(),
+    hazardViewModel: HazardViewModel = viewModel(factory = HazardViewModel.Factory),
 ) {
     val kualaLumpur = LatLng(3.1390, 101.6869)
     val cameraPositionState = rememberCameraPositionState {
@@ -357,7 +397,6 @@ fun HomeScreen(
     }
     val coroutineScope = rememberCoroutineScope()
     val starredLocations by profileViewModel.starredLocations.collectAsStateWithLifecycle()
-    // NEW: hazard state
     val nearbyWarning by hazardViewModel.nearbyWarning.collectAsStateWithLifecycle()
     val isStillTooLong by hazardViewModel.isStillTooLong.collectAsStateWithLifecycle()
     val sosTriggered by hazardViewModel.sosTriggered.collectAsStateWithLifecycle()
@@ -411,7 +450,6 @@ fun HomeScreen(
             routeError = null
 
             coroutineScope.launch {
-                // Add to history
                 profileViewModel.addRouteHistoryItem(
                     userId = userId,
                     origin = "Current Location",
@@ -447,7 +485,6 @@ fun HomeScreen(
             }
         }
     }
-
 
     LaunchedEffect(initialLocation) {
         if (initialLocation != null) {
@@ -488,10 +525,10 @@ fun HomeScreen(
             (it.latitude == searchedPlace?.latitude) && (it.longitude == searchedPlace?.longitude)
         }
     }
-    DetectRoadBumps{
+    DetectRoadBumps {
         userLocation?.let { loc ->
             hazardViewModel.onBumpDetected(loc.latitude, loc.longitude)
-            vibrate(hazardContext) // immediate reactive feedback, separate from the 50m proactive warning
+            vibrate(hazardContext)
         }
     }
 
@@ -555,7 +592,7 @@ fun HomeScreen(
                     title = hazard.type,
                     onClick = {
                         selectedHazard = hazard
-                        true // we're showing our own dialog, not the default info window
+                        true
                     }
                 )
             }
@@ -566,7 +603,7 @@ fun HomeScreen(
                 .align(Alignment.TopCenter)
                 .padding(top = 24.dp),
         ) {
-            MapSearchBar { selectedLatLng, placeName, placeAddress ->
+            MapSearchBar(userLocation = userLocation) { selectedLatLng, placeName, placeAddress ->
                 searchedPlace = selectedLatLng
                 searchedPlaceName = placeName
                 searchedPlaceAddress = placeAddress
@@ -574,7 +611,6 @@ fun HomeScreen(
                 routeStarted = false
                 routeError = null
 
-                // Add to history upon search
                 profileViewModel.addRouteHistoryItem(
                     userId = userId,
                     origin = "Current Location",
@@ -864,9 +900,14 @@ fun SafetyIndicator(color: Color, text: String) {
 }
 
 @Composable
-fun MapSearchBar(onPlaceSelected: (LatLng, String?, String?) -> Unit) {
+fun MapSearchBar(
+    userLocation: LatLng?,
+    onPlaceSelected: (LatLng, String?, String?) -> Unit,
+) {
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
     val fields = listOf(Place.Field.ID, Place.Field.NAME, Place.Field.LAT_LNG, Place.Field.ADDRESS)
+    var isListening by remember { mutableStateOf(false) }
 
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult(),
@@ -884,11 +925,33 @@ fun MapSearchBar(onPlaceSelected: (LatLng, String?, String?) -> Unit) {
         }
     }
 
+    val voiceLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult(),
+    ) { result ->
+        isListening = false
+        if (result.resultCode == Activity.RESULT_OK) {
+            val spokenText = result.data
+                ?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
+                ?.firstOrNull()
+
+            if (!spokenText.isNullOrBlank()) {
+                coroutineScope.launch {
+                    val place = resolveSpokenTextToPlace(context, spokenText, userLocation)
+                    if (place?.latLng != null) {
+                        onPlaceSelected(place.latLng!!, place.name, place.address)
+                    } else {
+                        Toast.makeText(
+                            context,
+                            "Couldn't find a place for \"$spokenText\"",
+                            Toast.LENGTH_SHORT,
+                        ).show()
+                    }
+                }
+            }
+        }
+    }
+
     Card(
-        onClick = {
-            val intent = Autocomplete.IntentBuilder(AutocompleteActivityMode.OVERLAY, fields).build(context)
-            launcher.launch(intent)
-        },
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
@@ -899,18 +962,56 @@ fun MapSearchBar(onPlaceSelected: (LatLng, String?, String?) -> Unit) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Start,
+            horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            Icon(imageVector = Icons.Default.Search, contentDescription = null, tint = Color.Gray)
-            @Suppress("PARAMETER_NAME_CHANGED_ON_OVERRIDE")
-            Text(
-                text = "Search here",
-                modifier = Modifier.padding(start = 16.dp),
-                color = Color.Gray,
-                style = MaterialTheme.typography.bodyLarge,
-            )
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable {
+                        val intent = Autocomplete.IntentBuilder(AutocompleteActivityMode.OVERLAY, fields)
+                            .build(context)
+                        launcher.launch(intent)
+                    },
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(imageVector = Icons.Default.Search, contentDescription = null, tint = Color.Gray)
+                Text(
+                    text = "Search here",
+                    modifier = Modifier.padding(start = 16.dp),
+                    color = Color.Gray,
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+            }
+            IconButton(
+                onClick = {
+                    val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                        putExtra(
+                            RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                            RecognizerIntent.LANGUAGE_MODEL_FREE_FORM,
+                        )
+                        putExtra(RecognizerIntent.EXTRA_PROMPT, "Say a destination")
+                    }
+                    try {
+                        isListening = true
+                        voiceLauncher.launch(intent)
+                    } catch (e: ActivityNotFoundException) {
+                        isListening = false
+                        Toast.makeText(
+                            context,
+                            "Speech recognition isn't available on this device",
+                            Toast.LENGTH_SHORT,
+                        ).show()
+                    }
+                },
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Mic,
+                    contentDescription = "Voice search",
+                    tint = if (isListening) MaterialTheme.colorScheme.primary else Color.Gray,
+                )
+            }
         }
     }
 }

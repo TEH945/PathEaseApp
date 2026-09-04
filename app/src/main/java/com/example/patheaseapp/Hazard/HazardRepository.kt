@@ -7,6 +7,10 @@ import io.github.jan.supabase.storage.storage
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import java.util.UUID
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import io.github.jan.supabase.SupabaseClient
+
 
 // Only the fields we actually insert — keeps distanceMeters (client-only) out of the payload.
 @Serializable
@@ -20,10 +24,10 @@ private data class NewHazard(
 
 // Data layer for hazards — now backed by Supabase (Postgres + Storage)
 // instead of an in-memory mock list, so reports are visible to every user.
-class HazardRepository {
+class HazardRepository (private val supabaseClient: SupabaseClient){
 
-    private val table = hazardSupabaseClient.postgrest.from("hazards")
-    private val bucket = hazardSupabaseClient.storage.from("hazard-photos")
+    private val table = supabaseClient.postgrest.from("hazards")
+    private val bucket = supabaseClient.storage.from("hazard-photos")
 
     // Returns only currently-active hazards (not yet confirmed removed).
     suspend fun getHazards(): List<Hazard> {
@@ -57,4 +61,6 @@ class HazardRepository {
             filter { eq("id", hazardId) }
         }
     }
+
 }
+

@@ -10,10 +10,12 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.CancellationException
+import androidx.lifecycle.ViewModelProvider
+import android.net.Uri
 
 // Controller/ViewModel for the Hazard/Barrier & Safety feature — holds all state and business logic.
 class HazardViewModel(
-    private val repository: HazardRepository = HazardRepository()
+    private val repository: HazardRepository
 ) : ViewModel() {
 
     private val _hazards = MutableStateFlow<List<Hazard>>(emptyList())
@@ -127,5 +129,14 @@ class HazardViewModel(
 
     fun onSosHandled() {
         _sosTriggered.value = false // reset after the call intent has been launched
+    }
+
+    companion object {
+        val Factory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                return HazardViewModel(HazardRepository(hazardSupabaseClient)) as T
+            }
+        }
     }
 }
