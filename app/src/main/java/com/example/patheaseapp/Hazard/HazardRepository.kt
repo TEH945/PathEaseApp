@@ -26,8 +26,8 @@ private data class NewHazard(
 // instead of an in-memory mock list, so reports are visible to every user.
 class HazardRepository (private val supabaseClient: SupabaseClient){
 
-    private val table = hazardSupabaseClient.postgrest.from("hazards")
-    private val bucket = hazardSupabaseClient.storage.from("hazard-photos")
+    private val table = supabaseClient.postgrest.from("hazards")
+    private val bucket = supabaseClient.storage.from("hazard-photos")
 
     // Returns only currently-active hazards (not yet confirmed removed).
     suspend fun getHazards(): List<Hazard> {

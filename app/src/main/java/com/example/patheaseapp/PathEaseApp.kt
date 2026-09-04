@@ -1,5 +1,7 @@
 package com.example.patheaseapp
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.History
@@ -65,9 +67,38 @@ fun PathEaseApp(
     LaunchedEffect(isForgotPasswordVisible) {
         onForgotPasswordVisibleChanged(isForgotPasswordVisible)
     }
+
+    // Handle initial loading state to avoid flickering or blank screens
+    if (sessionStatus is SessionStatus.Initializing) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = androidx.compose.ui.Alignment.Center
+        ) {
+            CircularProgressIndicator()
+        }
+        return
+    }
     
     // 如果 session 已存在，说明用户已登录（包括通过重置密码链接进入）
     val isRecoveryMode = session != null && isForgotPasswordVisible
+
+    val userId = session?.user?.id ?: ""
+    val homeViewModel: HomeViewModel = viewModel<HomeViewModel>()
+    val profileViewModel: ProfileViewModel = viewModel(
+        factory = remember {
+            object : ViewModelProvider.Factory {
+                override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                    @Suppress("UNCHECKED_CAST")
+                    return ProfileViewModel(supabaseClient, accessibilityRepo) as T
+                }
+            }
+        },
+    )
+
+    val context = LocalContext.current
+    LaunchedEffect(profileViewModel, context) {
+        profileViewModel.setContext(context)
+    }
 
     if (session == null || (isRecoveryMode)) {
         if (isForgotPasswordVisible) {
@@ -84,24 +115,11 @@ fun PathEaseApp(
             )
         }
     } else {
-        val userId = session.user?.id ?: ""
         var currentTab by remember { mutableStateOf<AppScreen>(AppScreen.Map) }
         var selectedLocation by remember { mutableStateOf<LatLng?>(null) }
         var selectedName by remember { mutableStateOf<String?>(null) }
         var selectedAddress by remember { mutableStateOf<String?>(null) }
         var shouldAutoStartRoute by remember { mutableStateOf(false) }
-
-        val homeViewModel: HomeViewModel = viewModel<HomeViewModel>()
-        
-        val profileViewModel: ProfileViewModel = viewModel(
-            factory = object : ViewModelProvider.Factory {
-                override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                    @Suppress("UNCHECKED_CAST")
-                    return ProfileViewModel(supabaseClient, accessibilityRepo) as T
-                }
-            },
-        )
-        profileViewModel.setContext(LocalContext.current)
 
 
         Scaffold(
